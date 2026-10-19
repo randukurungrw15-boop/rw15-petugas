@@ -27,7 +27,7 @@
     <form onsubmit="prosesLogin(event)">
       <div class="mb-3">
         <label class="form-label small fw-semibold">Nama Petugas / Username</label>
-        <input type="text" id="inputUser" class="form-control" placeholder="Contoh: Dandi Supriatna" required>
+        <input type="text" id="inputUser" class="form-control" placeholder="Contoh: admin_rw15 / Dandi Supriatna" required>
       </div>
       <div class="mb-3">
         <label class="form-label small fw-semibold">PIN / Password Petugas</label>
@@ -51,24 +51,29 @@
       <small class="opacity-75">Penarikan Khusus Hari Sabtu</small>
     </div>
 
-    <!-- Panel Wajib Sinkronisasi Awal -->
+    <!-- Panel Wajib Sinkronisasi & Upload -->
     <div class="card card-custom p-3 mb-3 border-danger">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <span class="small fw-bold text-danger">⚠️ STATUS SINKRONISASI</span>
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <span class="small fw-bold text-danger">STATUS SINKRONISASI</span>
         <span id="statusSinkronBadge" class="badge bg-danger">Belum Disinkronkan</span>
+      </div>
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="small fw-bold text-secondary">DATA TERSIMPAN DI HP</span>
+        <span id="statusAntreanBadge" class="badge bg-secondary">0 Data</span>
       </div>
 
       <div class="mb-2">
         <label class="form-label small fw-semibold mb-1">📅 Tanggal Sabtu Penarikan</label>
-        <input type="date" id="sabtuMulai" class="form-control form-control-sm fw-bold" required onchange="ubahTanggalSabtu()">
+        <input type="date" id="sabtuMulai" class="form-control form-control-sm fw-bold" required onchange="pastikanHariSabtu()">
+        <small id="infoSabtu" class="text-muted" style="font-size: 11px;">Otomatis disesuaikan ke hari Sabtu.</small>
       </div>
 
       <div class="d-grid gap-2 mt-2">
         <button type="button" id="btnSinkron" class="btn btn-warning btn-sm fw-bold text-dark" onclick="muatUlangDatabase()">
-          🔄 Wajib Klik: Sinkron KK & Riwayat Lunas
+          🔄 1. Wajib Klik: Sinkron KK & Status Lunas
         </button>
         <button type="button" class="btn btn-primary btn-sm fw-bold" onclick="uploadDataKeSpreadsheet()">
-          ☁️ Upload Data ke Spreadsheet (Update Keuangan)
+          ☁️ Upload Data ke Spreadsheet (Update Keuangan Otomatis)
         </button>
         <button type="button" class="btn btn-success btn-sm fw-bold" onclick="kirimRekapWhatsApp()">
           💬 Kirim Rekap ke WhatsApp Bendahara
@@ -76,15 +81,15 @@
       </div>
     </div>
 
-    <!-- Kamera Scanner QR (Dikunci Sebelum Sinkron) -->
+    <!-- Kamera Scanner QR -->
     <div class="card card-custom p-3 mb-3">
       <div class="d-flex justify-content-between align-items-center mb-2">
         <span class="small fw-bold text-success">1. SCAN QR RUMAH WARGA</span>
-        <button type="button" class="btn btn-sm btn-outline-primary py-0" id="btnScanUlang" onclick="mulaiScanUlang()" disabled>📷 Buka Kamera / Scan Lagi</button>
+        <button type="button" class="btn btn-sm btn-outline-primary py-0" id="btnScanUlang" onclick="mulaiScanUlang()" disabled>📷 Scan Lagi</button>
       </div>
       
-      <div id="reader" class="mb-3 d-flex align-items-center justify-content-center text-white text-center p-3" style="background:#222; min-height:200px; border-radius:12px;">
-        <span id="infoKameraStatus" class="small text-warning">⚠️ Harap klik tombol [Sinkron KK & Riwayat Lunas] di atas terlebih dahulu agar kamera aktif!</span>
+      <div id="reader" class="mb-3 d-flex align-items-center justify-content-center text-white text-center p-3">
+        <span id="infoKameraStatus" class="small text-warning">⚠️ Klik tombol [Sinkron KK & Status Lunas] di atas terlebih dahulu sebelum melakukan scan!</span>
       </div>
 
       <!-- Kotak Notifikasi Hasil Scan / Penolakan Ganda -->
@@ -132,10 +137,10 @@
         <div id="blokUang" class="mb-3">
           <label class="form-label small fw-semibold mb-1">Nominal Uang (Rp)</label>
           <div class="d-flex gap-1 mb-2 flex-wrap">
-            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(5000)">5.000</button>
-            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(10000)">10.000</button>
-            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(15000)">15.000</button>
-            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(20000)">20.000</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(5000)">5.000 (1 Mg)</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(10000)">10.000 (2 Mg)</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(15000)">15.000 (3 Mg)</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(20000)">20.000 (4 Mg)</button>
           </div>
           <input type="number" id="nominalUang" class="form-control" value="5000" min="0" step="500">
         </div>
@@ -169,27 +174,59 @@
 
 <script>
   const GAS_EXEC_URL = "https://script.google.com/macros/s/AKfycbwzp9NOWGeKRb5Dzx5Ujoh84Z6c-z1OxTPhphlXSekar6IkYBRgRp8R6qEJZfg63JKN7w/exec";
+  const SHEET_ID = "1dYr-lh2eCB9feuowBkEvzmf6XY8O0s5iRiAALDH8TI8";
+
   let daftarKK = [];
-  let riwayatSudahBayar = [];
+  let riwayatPerelek = [];
   let petugasAktif = "";
   let html5QrCode = null;
   let sudahDisinkronkan = false;
 
   window.addEventListener('DOMContentLoaded', () => {
-    const savedLogin = sessionStorage.getItem('PETUGAS_AKTIF');
-    if (savedLogin) {
-      petugasAktif = savedLogin;
-      document.getElementById('layarLogin').classList.add('d-none');
-      document.getElementById('layarApp').classList.remove('d-none');
-      document.getElementById('infoPetugasLogin').innerText = "Petugas: " + petugasAktif;
-    }
-    updateStatusAntrean();
-
+    // Set default ke hari Sabtu terdekat
     const today = new Date();
     const diffToSat = (6 - today.getDay() + 7) % 7;
     today.setDate(today.getDate() + diffToSat);
-    document.getElementById('sabtuMulai').value = today.toISOString().split('T')[0];
+    document.getElementById('sabtuMulai').value = formatYYYYMMDD(today);
+
+    const savedLogin = sessionStorage.getItem('PETUGAS_AKTIF');
+    if (savedLogin) {
+      petugasAktif = savedLogin;
+      bukaLayarUtama();
+    }
+    updateStatusAntrean();
   });
+
+  function formatYYYYMMDD(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  // Pastikan tanggal yang dipilih selalu jatuh pada hari Sabtu
+  function pastikanHariSabtu() {
+    const input = document.getElementById('sabtuMulai');
+    if (!input.value) return;
+    const parts = input.value.split('-');
+    const dt = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    const day = dt.getDay();
+    if (day !== 6) {
+      // Geser ke Sabtu terdekat
+      const diff = day === 5 ? 1 : (6 - day + 7) % 7;
+      dt.setDate(dt.getDate() + diff);
+      input.value = formatYYYYMMDD(dt);
+      document.getElementById('infoSabtu').innerText = `⚠️ Tanggal otomatis digeser ke Hari Sabtu (${input.value}).`;
+    } else {
+      document.getElementById('infoSabtu').innerText = `✅ Periode Hari Sabtu: ${input.value}`;
+    }
+
+    // Jika sudah ada kode QR yang tampil, langsung cek ulang status lunasnya
+    const qrSekarang = document.getElementById('qrCode').value;
+    if (qrSekarang && sudahDisinkronkan) {
+      prosesKodeQR(qrSekarang);
+    }
+  }
 
   async function prosesLogin(e) {
     e.preventDefault();
@@ -209,9 +246,7 @@
       if (json.status === 'success' && json.data && json.data.success) {
         petugasAktif = json.data.user.nama || u;
         sessionStorage.setItem('PETUGAS_AKTIF', petugasAktif);
-        document.getElementById('layarLogin').classList.add('d-none');
-        document.getElementById('layarApp').classList.remove('d-none');
-        document.getElementById('infoPetugasLogin').innerText = "Petugas: " + petugasAktif;
+        bukaLayarUtama();
       } else {
         throw new Error(json.data ? json.data.message : 'Login gagal');
       }
@@ -221,18 +256,34 @@
     }
   }
 
+  function bukaLayarUtama() {
+    document.getElementById('layarLogin').classList.add('d-none');
+    document.getElementById('layarApp').classList.remove('d-none');
+    document.getElementById('infoPetugasLogin').innerText = "Petugas: " + petugasAktif;
+
+    // Muat cache dari HP jika ada (untuk berjaga-jaga saat offline)
+    const cacheKK = localStorage.getItem('CACHE_DAFTAR_KK');
+    const cachePerelek = localStorage.getItem('CACHE_RIWAYAT_PERELEK');
+    if (cacheKK && cachePerelek) {
+      daftarKK = JSON.parse(cacheKK);
+      riwayatPerelek = JSON.parse(cachePerelek);
+      isiDatalistKK();
+    }
+  }
+
   function logoutApp() {
     sessionStorage.removeItem('PETUGAS_AKTIF');
     location.reload();
   }
 
-  // FUNGSI UTAMA SINKRONISASI WAJIB
+  // SINKRONISASI DATA KK & SHEET PERELEK DARI SPREADSHEET MASTER
   async function muatUlangDatabase() {
     const badge = document.getElementById('statusSinkronBadge');
     badge.className = 'badge bg-warning text-dark';
-    badge.innerText = 'Sedang Menyinkronkan...';
+    badge.innerText = 'Menyinkronkan...';
 
     try {
+      // 1. Ambil data dari Apps Script
       const res = await fetch(GAS_EXEC_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -240,54 +291,93 @@
       });
       const json = await res.json();
 
-      if (json.status === 'success' && json.data && json.data.dashboard) {
-        daftarKK = json.data.dashboard.kkList || [];
-        const db = json.data.dashboard;
-        riwayatSudahBayar = db.riwayatBayar || db.perelekList || db.riwayat || [];
+      if (json.status === 'success' && json.data) {
+        const db = json.data.dashboard || json.data;
+        daftarKK = db.kkList || db.dataKK || [];
+        
+        // Coba ekstrak riwayat perelek dari berbagai kemungkinan properti Apps Script
+        let rawPerelek = db.perelek || db.perelekList || db.riwayatPerelek || db.riwayatBayar || db.setoranList || [];
+        
+        // 2. Fallback langsung tarik data terupdate dari Sheet "Perelek" & "Data_KK" jika Apps Script tidak mengirim array perelek lengkap
+        try {
+          const gvizRes = await fetch(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Perelek`);
+          const gvizText = await gvizRes.text();
+          const jsonStr = gvizText.substring(gvizText.indexOf('{'), gvizText.lastIndexOf('}') + 1);
+          const gvizData = JSON.parse(jsonStr);
+          if (gvizData.table && gvizData.table.rows) {
+            rawPerelek = gvizData.table.rows.map(r => {
+              const c = r.c || [];
+              return {
+                id: c[0] ? c[0].v : '',
+                tanggal: c[1] ? (c[1].f || c[1].v) : '',
+                qr: c[2] ? c[2].v : '',
+                nama: c[4] ? c[4].v : '',
+                rt: c[5] ? c[5].v : '',
+                jenis: c[6] ? c[6].v : '',
+                uang: c[11] ? c[11].v : 0,
+                minggu: c[12] ? Number(c[12].v || 1) : 1,
+                sabtuMulai: c[13] ? String(c[13].f || c[13].v).trim() : ''
+              };
+            }).filter(item => item.qr && item.qr !== 'QR_KK');
+          }
+        } catch (eGviz) {
+          console.log("Menggunakan data perelek dari Apps Script");
+        }
 
-        const dl = document.getElementById('datalistKK');
-        dl.innerHTML = '';
-        daftarKK.forEach(item => {
-          const opt = document.createElement('option');
-          opt.value = item.qr;
-          opt.label = item.nama + ' (' + item.rt + ')';
-          dl.appendChild(opt);
-        });
+        riwayatPerelek = rawPerelek;
+
+        // Simpan ke memori HP agar saat offline di gang tetap bisa mendeteksi yang sudah lunas
+        localStorage.setItem('CACHE_DAFTAR_KK', JSON.stringify(daftarKK));
+        localStorage.setItem('CACHE_RIWAYAT_PERELEK', JSON.stringify(riwayatPerelek));
+
+        isiDatalistKK();
 
         sudahDisinkronkan = true;
         badge.className = 'badge bg-success';
-        badge.innerText = '✅ Berhasil Disinkronkan (' + daftarKK.length + ' KK)';
+        badge.innerText = `✅ Tersinkron (${daftarKK.length} KK • ${riwayatPerelek.length} Setoran)`;
         
-        // Aktifkan pencarian manual dan tombol scan
         document.getElementById('cariManualInput').disabled = false;
         document.getElementById('cariManualInput').placeholder = 'Ketik nama warga atau PRK-RT...';
         document.getElementById('btnScanUlang').disabled = false;
         
-        tampilkanNotifScanner('✨ Sinkronisasi Berhasil! Silakan mulai scan QR warga.', 'success');
+        tampilkanNotifScanner('✨ Sinkronisasi Berhasil! Data KK yang sudah lunas telah dimuat.', 'success');
         inisialisasiScanner();
       } else {
-        throw new Error('Gagal memuat data dari server');
+        throw new Error('Respons server tidak valid');
       }
     } catch (err) {
-      badge.className = 'badge bg-danger';
-      badge.innerText = 'Gagal Sinkron (Cek Internet)';
-      alert("❌ Gagal menyinkronkan data. Pastikan HP terhubung ke internet!");
+      // Jika gagal karena tidak ada sinyal, cek apakah ada cache di HP
+      if (daftarKK.length > 0) {
+        sudahDisinkronkan = true;
+        badge.className = 'badge bg-warning text-dark';
+        badge.innerText = `⚠️ Mode Offline (${daftarKK.length} KK dari Memori HP)`;
+        document.getElementById('cariManualInput').disabled = false;
+        document.getElementById('btnScanUlang').disabled = false;
+        tampilkanNotifScanner('⚠️ Menggunakan data sinkronisasi terakhir dari memori HP.', 'warning');
+        inisialisasiScanner();
+      } else {
+        badge.className = 'badge bg-danger';
+        badge.innerText = 'Gagal Sinkron (Cek Internet)';
+        alert("❌ Gagal menyinkronkan data. Pastikan HP terhubung ke internet!");
+      }
     }
   }
 
-  function ubahTanggalSabtu() {
-    // Jika tanggal diubah, ingatkan untuk sinkron ulang
-    sudahDisinkronkan = false;
-    document.getElementById('statusSinkronBadge.className') = 'badge bg-danger';
-    document.getElementById('statusSinkronBadge').innerText = 'Perlu Sinkron Ulang';
+  function isiDatalistKK() {
+    const dl = document.getElementById('datalistKK');
+    dl.innerHTML = '';
+    daftarKK.forEach(item => {
+      const opt = document.createElement('option');
+      opt.value = item.qr;
+      opt.label = item.nama + ' (' + item.rt + ')';
+      dl.appendChild(opt);
+    });
   }
 
   function inisialisasiScanner() {
-    if (!sudahDisinkronkan) {
-      alert("⚠️ Harap lakukan sinkronisasi data terlebih dahulu!");
-      return;
-    }
+    if (!sudahDisinkronkan) return;
     if (!html5QrCode) {
+      document.getElementById('reader').innerHTML = '';
       html5QrCode = new Html5Qrcode("reader");
     }
     mulaiScanUlang();
@@ -295,10 +385,11 @@
 
   function mulaiScanUlang() {
     if (!sudahDisinkronkan) {
-      tampilkanNotifScanner('⚠️ Harap klik tombol [Sinkron KK & Riwayat Lunas] terlebih dahulu!', 'danger');
+      tampilkanNotifScanner('⚠️ Harap klik tombol [Sinkron KK & Status Lunas] terlebih dahulu!', 'danger');
       return;
     }
     if (!html5QrCode) {
+      document.getElementById('reader').innerHTML = '';
       html5QrCode = new Html5Qrcode("reader");
     }
     
@@ -345,57 +436,86 @@
     }
   }
 
+  // FUNGSI CEK APAKAH TANGGAL SABTU TARGET MASUK DALAM CAKUPAN MINGGU LUNAS
+  function apakahTanggalTertutupLunas(sabtuMulaiStr, jumlahMinggu, sabtuTargetStr) {
+    if (!sabtuMulaiStr || !sabtuTargetStr) return false;
+    
+    // Normalisasi string tanggal ke YYYY-MM-DD
+    let cleanMulai = String(sabtuMulaiStr).trim().substring(0, 10);
+    if (cleanMulai.includes('/')) {
+      const p = cleanMulai.split('/');
+      if (p[2] && p[2].length === 4) cleanMulai = `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
+    }
+
+    const pMulai = cleanMulai.split('-');
+    if (pMulai.length !== 3) return cleanMulai === sabtuTargetStr;
+
+    const jmlMg = Math.max(1, Number(jumlahMinggu || 1));
+    const dtMulai = new Date(Number(pMulai[0]), Number(pMulai[1]) - 1, Number(pMulai[2]));
+
+    // Periksa setiap Sabtu selama 'jmlMg' minggu ke depan
+    for (let i = 0; i < jmlMg; i++) {
+      const dtCek = new Date(dtMulai);
+      dtCek.setDate(dtCek.getDate() + (i * 7));
+      if (formatYYYYMMDD(dtCek) === sabtuTargetStr) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   function prosesKodeQR(inputStr) {
     if (!sudahDisinkronkan) {
       tampilkanNotifScanner('❌ DITOLAK: Harap sinkronkan aplikasi terlebih dahulu!', 'danger');
       return;
     }
 
+    pastikanHariSabtu();
     const bersih = String(inputStr).trim().toUpperCase();
     const cocok = daftarKK.find(k => String(k.qr).trim().toUpperCase() === bersih || String(k.nama).trim().toUpperCase() === bersih);
 
     if (cocok) {
-      const sabtuPilihInput = document.getElementById('sabtuMulai').value; // Format: YYYY-MM-DD
-      const [thn, bln, tgl] = sabtuPilihInput.split('-');
-      const sabtuFmt1 = `${tgl}/${bln}/${thn}`;
-      const sabtuFmt2 = `${sabtuPilihInput}`;
+      const sabtuTarget = document.getElementById('sabtuMulai').value; // YYYY-MM-DD
+      const qrWarga = String(cocok.qr).trim().toUpperCase();
+      const namaWarga = String(cocok.nama).trim().toUpperCase();
 
-      // Pengecekan apakah sudah lunas di server atau lokal
-      const sudahBayarServer = riwayatSudahBayar.some(r => {
-        const rQr = String(r.qr || r.qrCode || '').trim().toUpperCase();
-        const rNama = String(r.nama || r.kepalaKeluarga || '').trim().toUpperCase();
-        const rTgl = String(r.tanggal || r.sabtuMulai || '').trim();
-        
-        const cocokNamaAtauQr = (rQr === bersih || rNama === bersih || rNama === String(cocok.nama).trim().toUpperCase());
-        const cocokTanggal = (rTgl.includes(tgl) && rTgl.includes(bln)) || rTgl === sabtuFmt1 || rTgl === sabtuFmt2;
+      // 1. Cek di data Sheet Perelek (termasuk pembayaran rapel beberapa minggu seperti Teh Lia 4 Minggu)
+      const sudahLunasServer = riwayatPerelek.some(r => {
+        const rQr = String(r.qr || r.qrCode || r.QR_KK || '').trim().toUpperCase();
+        const rNama = String(r.nama || r.kepalaKeluarga || r['Kepala Keluarga'] || '').trim().toUpperCase();
+        const rSabtuMulai = r.sabtuMulai || r['Sabtu Mulai'] || r.tanggal || '';
+        const rMinggu = r.minggu || r.Minggu || (Number(r.uang || r.nominal || 0) >= 5000 ? Math.floor(Number(r.uang || r.nominal) / 5000) : 1);
 
-        return cocokNamaAtauQr && cocokTanggal;
+        const cocokOrang = (rQr === qrWarga || rNama === namaWarga);
+        if (!cocokOrang) return false;
+
+        return apakahTanggalTertutupLunas(rSabtuMulai, rMinggu, sabtuTarget);
       });
 
+      // 2. Cek juga di antrean lokal HP yang belum di-upload
       let antreanLokal = JSON.parse(localStorage.getItem('SETORAN_LOKAL_HP') || '[]');
-      const sudahBayarLokal = antreanLokal.some(r => {
-        const cocokLokal = (String(r.qrCode).trim().toUpperCase() === bersih || String(r.kepalaKeluarga).trim().toUpperCase() === String(cocok.nama).trim().toUpperCase());
-        return cocokLokal && String(r.sabtuMulai) === String(sabtuPilihInput);
+      const sudahLunasLokal = antreanLokal.some(r => {
+        const cocokLokal = (String(r.qrCode).trim().toUpperCase() === qrWarga || String(r.kepalaKeluarga).trim().toUpperCase() === namaWarga);
+        if (!cocokLokal) return false;
+        const mgLokal = Number(r.nominalUang || 0) >= 5000 ? Math.floor(Number(r.nominalUang) / 5000) : 1;
+        return apakahTanggalTertutupLunas(r.sabtuMulai, mgLokal, sabtuTarget);
       });
 
-      if (sudahBayarServer || sudahBayarLokal) {
-        document.getElementById('qrCode').value = cocok.qr;
-        document.getElementById('noKK').value = cocok.nokk || '-';
-        document.getElementById('kepalaKeluarga').value = cocok.nama;
-        document.getElementById('rtKK').value = cocok.rt;
+      document.getElementById('qrCode').value = cocok.qr;
+      document.getElementById('noKK').value = cocok.nokk || '-';
+      document.getElementById('kepalaKeluarga').value = cocok.nama;
+      document.getElementById('rtKK').value = cocok.rt;
+
+      if (sudahLunasServer || sudahLunasLokal) {
+        // KUNCI TOMBOL SIMPAN & TAMPILKAN PERINGATAN MERAH
         document.getElementById('btnSimpanLokal').disabled = true;
-        
         tampilkanNotifScanner(`❌ DITOLAK: KK ${cocok.nama} sudah lunas pada periode Sabtu ini!`, 'danger');
       } else {
-        document.getElementById('qrCode').value = cocok.qr;
-        document.getElementById('noKK').value = cocok.nokk || '-';
-        document.getElementById('kepalaKeluarga').value = cocok.nama;
-        document.getElementById('rtKK').value = cocok.rt;
         document.getElementById('btnSimpanLokal').disabled = false;
-        
         tampilkanNotifScanner(`✅ Warga ditemukan: ${cocok.nama}. Silakan masukkan setoran.`, 'success');
       }
     } else {
+      resetForm();
       tampilkanNotifScanner('❌ DITOLAK: Kode QR / Warga tidak ditemukan di database!', 'danger');
     }
   }
@@ -427,7 +547,7 @@
     antrean.push(formPayload);
     localStorage.setItem('SETORAN_LOKAL_HP', JSON.stringify(antrean));
 
-    tampilkanNotifScanner('💾 Tersimpan di HP! Klik [Scan Lagi] untuk rumah berikutnya.', 'success');
+    tampilkanNotifScanner(`💾 Setoran KK ${formPayload.kepalaKeluarga} tersimpan di HP! Klik [Scan Lagi] untuk lanjut.`, 'success');
     updateStatusAntrean();
     resetForm();
   }
@@ -435,7 +555,7 @@
   function updateStatusAntrean() {
     let antrean = JSON.parse(localStorage.getItem('SETORAN_LOKAL_HP') || '[]');
     const badge = document.getElementById('statusAntreanBadge');
-    badge.innerText = antrean.length + ' Data Tersimpan di HP';
+    badge.innerText = antrean.length + ' Data Tersimpan';
     badge.className = antrean.length > 0 ? 'badge bg-warning text-dark' : 'badge bg-secondary';
   }
 
@@ -482,23 +602,8 @@
     let antrean = JSON.parse(localStorage.getItem('SETORAN_LOKAL_HP') || '[]');
     const sabtuPilih = document.getElementById('sabtuMulai').value;
     
-    let rekapList = [...antrean];
-    riwayatSudahBayar.forEach(r => {
-      const rQr = r.qr || r.qrCode || '';
-      const rTgl = r.tanggal || r.sabtuMulai || '';
-      if (String(rTgl).includes(sabtuPilih.split('-')[2]) && !rekapList.some(item => item.qrCode === rQr)) {
-        rekapList.push({
-          kepalaKeluarga: r.nama || r.kepalaKeluarga,
-          rtKK: r.rt || r.rtKK,
-          jenis: r.jenis,
-          nominalUang: r.nominal || r.nominalUang,
-          jumlahBeras: r.jumlah || r.jumlahBeras
-        });
-      }
-    });
-
-    if (rekapList.length === 0) {
-      alert("Belum ada data setoran untuk periode Sabtu tersebut");
+    if (antrean.length === 0) {
+      alert("Belum ada data setoran baru di HP untuk dikirim.");
       return;
     }
 
@@ -510,11 +615,11 @@
     let totalUang = 0;
     let totalBeras = 0;
 
-    rekapList.forEach((item, index) => {
-      let infoSetor = Number(item.nominalUang || 0) > 0 ? `Rp ${Number(item.nominalUang).toLocaleString('id-ID')}` : `${item.jumlahBeras || item.jumlah} ${item.satuanBeras || 'Satuan'}`;
-      pesan += `${index + 1}. ${item.kepalaKeluarga} (RT ${item.rtKK || item.rt}) - ${infoSetor}\n`;
+    antrean.forEach((item, index) => {
+      let infoSetor = Number(item.nominalUang || 0) > 0 ? `Rp ${Number(item.nominalUang).toLocaleString('id-ID')}` : `${item.jumlahBeras} ${item.satuanBeras || 'Satuan'}`;
+      pesan += `${index + 1}. ${item.kepalaKeluarga} (${item.rtKK}) - ${infoSetor}\n`;
       if (Number(item.nominalUang || 0) > 0) totalUang += Number(item.nominalUang);
-      if (Number(item.jumlahBeras || item.jumlah || 0) > 0) totalBeras += Number(item.jumlahBeras || item.jumlah);
+      if (Number(item.jumlahBeras || 0) > 0) totalBeras += Number(item.jumlahBeras);
     });
 
     pesan += `----------------------------------------\n`;
