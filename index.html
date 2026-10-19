@@ -1,638 +1,125 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <title>Petugas Perelek - RW 15 Digital</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <script src="https://unpkg.com/html5-qrcode"></script>
-  <style>
-    body { background-color: #f0f4f8; font-family: system-ui, -apple-system, sans-serif; }
-    .app-container { max-width: 480px; margin: 0 auto; padding-bottom: 40px; }
-    .card-custom { border: none; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
-    #reader { width: 100%; border-radius: 12px; overflow: hidden; border: 2px dashed #198754; background: #1e293b; min-height: 220px; }
-    .btn-action { border-radius: 10px; font-weight: 600; padding: 10px 14px; }
-  </style>
-</head>
-<body>
-
-<div class="container py-3 app-container">
-
-  <!-- LAYAR LOGIN PETUGAS -->
-  <div id="layarLogin" class="card card-custom p-4 mt-5">
-    <div class="text-center mb-4">
-      <h4 class="fw-bold text-success">LOGIN PETUGAS PERELEK</h4>
-      <p class="text-muted small">Kampung Randukurung RW 15</p>
-    </div>
-    <form onsubmit="prosesLogin(event)">
-      <div class="mb-3">
-        <label class="form-label small fw-semibold">Nama Petugas / Username</label>
-        <input type="text" id="inputUser" class="form-control" placeholder="Contoh: admin_rw15 / Dandi Supriatna" required>
-      </div>
-      <div class="mb-3">
-        <label class="form-label small fw-semibold">PIN / Password Petugas</label>
-        <input type="password" id="inputPass" class="form-control" placeholder="Masukkan PIN rahasia" required>
-      </div>
-      <div id="loginMsg" class="alert alert-danger d-none py-2 small mb-3"></div>
-      <div class="d-grid">
-        <button type="submit" id="btnLogin" class="btn btn-success btn-action">MASUK APLIKASI</button>
-      </div>
-    </form>
+<!-- Panel Status & Upload -->
+<div class="card card-custom p-3 mb-3">
+  <div class="d-flex justify-content-between align-items-center mb-1">
+    <span class="small fw-bold text-secondary">DATABASE WARGA</span>
+    <span id="statusSinkronBadge" class="badge bg-success">Siap Digunakan</span>
+  </div>
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <span class="small fw-bold text-secondary">DATA TERSIMPAN DI HP</span>
+    <span id="statusAntreanBadge" class="badge bg-secondary">0 Data</span>
   </div>
 
-  <!-- APLIKASI UTAMA -->
-  <div id="layarApp" class="d-none">
-    <div class="card card-custom p-3 mb-3 bg-success text-white text-center">
-      <div class="d-flex justify-content-between align-items-center">
-        <small id="infoPetugasLogin" class="fw-bold">Petugas: -</small>
-        <button class="btn btn-sm btn-light py-0 text-danger fw-bold" onclick="logoutApp()">Keluar</button>
-      </div>
-      <h5 class="fw-bold mb-0 mt-1">PETUGAS PERELEK RW 15</h5>
-      <small class="opacity-75">Penarikan Khusus Hari Sabtu</small>
-    </div>
-
-    <!-- Panel Status & Upload -->
-    <div class="card card-custom p-3 mb-3">
-      <div class="d-flex justify-content-between align-items-center mb-1">
-        <span class="small fw-bold text-secondary">DATABASE WARGA</span>
-        <span id="statusSinkronBadge" class="badge bg-success">Siap Digunakan</span>
-      </div>
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <span class="small fw-bold text-secondary">DATA TERSIMPAN DI HP</span>
-        <span id="statusAntreanBadge" class="badge bg-secondary">0 Data</span>
-      </div>
-
-      <div class="mb-2">
-        <label class="form-label small fw-semibold mb-1">📅 Tanggal Sabtu Penarikan</label>
-        <input type="date" id="sabtuMulai" class="form-control form-control-sm fw-bold" required onchange="simpanTanggalPilihan()">
-        <small id="infoSabtu" class="text-muted" style="font-size: 11px;">Tanggal tetap sesuai pilihan Anda setelah login.</small>
-      </div>
-
-      <div class="d-grid gap-2 mt-2">
-        <button type="button" class="btn btn-primary btn-sm fw-bold" onclick="uploadDataKeSpreadsheet()">
-          ☁️ Upload Data ke Spreadsheet (Update Keuangan Otomatis)
-        </button>
-        <button type="button" class="btn btn-success btn-sm fw-bold" onclick="kirimRekapWhatsApp()">
-          💬 Kirim Rekap ke WhatsApp Bendahara
-        </button>
-      </div>
-    </div>
-
-    <!-- Kamera Scanner QR -->
-    <div class="card card-custom p-3 mb-3">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <span class="small fw-bold text-success">1. SCAN QR RUMAH WARGA</span>
-        <button type="button" class="btn btn-sm btn-outline-secondary py-0" onclick="muatUlangDatabase(true)">🔄 Perbarui Data</button>
-      </div>
-
-      <div class="d-grid gap-2 mb-2">
-        <button type="button" id="btnBukaKamera" class="btn btn-primary btn-action" onclick="mulaiScanManual()">
-          📷 BUKA KAMERA SCAN QR
-        </button>
-        <button type="button" id="btnTutupKamera" class="btn btn-danger btn-sm d-none" onclick="hentikanKameraManual()">
-          ⏹️ Matikan Kamera (Hemat Baterai)
-        </button>
-      </div>
-      
-      <div id="reader" class="mb-3 d-flex align-items-center justify-content-center text-white text-center p-3">
-        <div id="placeholderKamera">
-          <div style="font-size: 36px;">📷</div>
-          <small class="text-light opacity-75">Kamera dimatikan untuk menghemat baterai.<br>Klik <b>Buka Kamera Scan QR</b> saat tiba di rumah warga.</small>
-        </div>
-      </div>
-
-      <div id="pesanNotifScanner" class="alert d-none py-2 px-3 small mb-2 fw-bold text-center"></div>
-
-      <label class="form-label small fw-semibold mb-1">Atau Cari Manual Kepala Keluarga / Kode QR:</label>
-      <input class="form-control form-control-sm mb-2" list="datalistKK" id="cariManualInput" placeholder="Ketik nama warga atau PRK-RT..." onchange="pilihDariPencarian()">
-      <datalist id="datalistKK"></datalist>
-    </div>
-
-    <!-- Form Input Setoran -->
-    <div class="card card-custom p-3">
-      <span class="small fw-bold text-success d-block mb-2">2. SIMPAN SETORAN KE MEMORI HP</span>
-
-      <form id="formSetoran" onsubmit="simpanSetoranLokal(event)">
-        <input type="hidden" id="noKK" value="-">
-
-        <div class="mb-2">
-          <label class="form-label small fw-semibold mb-1">Kode QR KK</label>
-          <input type="text" id="qrCode" class="form-control form-control-sm bg-light fw-mono" placeholder="Otomatis dari hasil scan" readonly required>
-        </div>
-
-        <div class="row g-2 mb-3">
-          <div class="col-8">
-            <label class="form-label small fw-semibold mb-1">Kepala Keluarga</label>
-            <input type="text" id="kepalaKeluarga" class="form-control form-control-sm bg-light fw-bold" readonly required>
-          </div>
-          <div class="col-4">
-            <label class="form-label small fw-semibold mb-1">RT</label>
-            <input type="text" id="rtKK" class="form-control form-control-sm bg-light text-center fw-bold" readonly required>
-          </div>
-        </div>
-
-        <div class="mb-2">
-          <label class="form-label small fw-semibold mb-1">Jenis Setoran</label>
-          <div class="btn-group w-100" role="group">
-            <input type="radio" class="btn-check" name="opsiJenis" id="jenisUang" value="Uang" checked onchange="aturTampilanJenis()">
-            <label class="btn btn-outline-success btn-sm" for="jenisUang">💵 Uang Tunai</label>
-
-            <input type="radio" class="btn-check" name="opsiJenis" id="jenisBeras" value="Beras" onchange="aturTampilanJenis()">
-            <label class="btn btn-outline-success btn-sm" for="jenisBeras">🌾 Beras</label>
-          </div>
-        </div>
-
-        <div id="blokUang" class="mb-3">
-          <label class="form-label small fw-semibold mb-1">Nominal Uang (Rp)</label>
-          <div class="d-flex gap-1 mb-2 flex-wrap">
-            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(5000)">5.000 (1 Mg)</button>
-            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(10000)">10.000 (2 Mg)</button>
-            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(15000)">15.000 (3 Mg)</button>
-            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(20000)">20.000 (4 Mg)</button>
-          </div>
-          <input type="number" id="nominalUang" class="form-control" value="5000" min="0" step="500">
-        </div>
-
-        <div id="blokBeras" class="mb-3 d-none">
-          <div class="row g-2">
-            <div class="col-7">
-              <label class="form-label small fw-semibold mb-1">Jumlah Beras</label>
-              <input type="number" id="jumlahBeras" class="form-control" value="0" min="0" step="0.5">
-            </div>
-            <div class="col-5">
-              <label class="form-label small fw-semibold mb-1">Satuan</label>
-              <select id="satuanBeras" class="form-select">
-                <option value="Gelas/Cangkir">Gelas/Cangkir</option>
-                <option value="Liter">Liter</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div class="d-grid">
-          <button type="submit" id="btnSimpanLokal" class="btn btn-success btn-action" disabled>
-            💾 SIMPAN KE HP
-          </button>
-        </div>
-      </form>
-    </div>
+  <div class="mb-2">
+    <label class="form-label small fw-semibold mb-1">📅 Tanggal Sabtu Penarikan</label>
+    <input type="date" id="sabtuMulai" class="form-control form-control-sm fw-bold" required onchange="simpanTanggalPilihan()">
+    <small id="infoSabtu" class="text-muted" style="font-size: 11px;">Tanggal tetap sesuai pilihan Anda setelah login.</small>
   </div>
 
+  <div class="d-grid gap-2 mt-2">
+    <button type="button" class="btn btn-primary btn-sm fw-bold" onclick="uploadDataKeSpreadsheet()">
+      ☁️ Upload Data ke Spreadsheet (Update Keuangan Otomatis)
+    </button>
+    <button type="button" class="btn btn-success btn-sm fw-bold" onclick="kirimRekapWhatsApp()">
+      💬 Kirim Rekap ke WhatsApp Bendahara
+    </button>
+  </div>
 </div>
 
-<script>
-  const GAS_EXEC_URL = "https://script.google.com/macros/s/AKfycbwzp9NOWGeKRb5Dzx5Ujoh84Z6c-z1OxTPhphlXSekar6IkYBRgRp8R6qEJZfg63JKN7w/exec";
-  const SHEET_URL_BASE = "https://docs.google.com/spreadsheets/d/" + "1dYr-lh2eCB9feuowBkEvzmf6XY8O0s5iRiAALDH8TI8";
+<!-- Kamera Scanner QR -->
+<div class="card card-custom p-3 mb-3">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <span class="small fw-bold text-success">1. SCAN QR RUMAH WARGA</span>
+    <button type="button" class="btn btn-sm btn-outline-secondary py-0" onclick="muatUlangDatabase(true)">🔄 Perbarui Data</button>
+  </div>
 
-  let daftarKK = [];
-  let riwayatPerelek = [];
-  let petugasAktif = "";
-  let html5QrCode = null;
+  <div class="d-grid gap-2 mb-2">
+    <button type="button" id="btnBukaKamera" class="btn btn-primary btn-action" onclick="mulaiScanManual()">
+      📷 BUKA KAMERA SCAN QR
+    </button>
+    <button type="button" id="btnTutupKamera" class="btn btn-danger btn-sm d-none" onclick="hentikanKameraManual()">
+      ⏹️ Matikan Kamera (Hemat Baterai)
+    </button>
+  </div>
+  
+  <div id="reader" class="mb-3 d-flex align-items-center justify-content-center text-white text-center p-3">
+    <div id="placeholderKamera">
+      <div style="font-size: 36px;">📷</div>
+      <small class="text-light opacity-75">Kamera dimatikan untuk menghemat baterai.<br>Klik <b>Buka Kamera Scan QR</b> saat tiba di rumah warga.</small>
+    </div>
+  </div>
 
-  window.addEventListener('DOMContentLoaded', () => {
-    const savedTanggal = localStorage.getItem('SABTU_PILIHAN_PETUGAS');
-    if (savedTanggal) {
-      document.getElementById('sabtuMulai').value = savedTanggal;
-    } else {
-      const today = new Date();
-      const diffToSat = (6 - today.getDay() + 7) % 7;
-      today.setDate(today.getDate() + diffToSat);
-      const defaultSabtu = formatYYYYMMDD(today);
-      document.getElementById('sabtuMulai').value = defaultSabtu;
-      localStorage.setItem('SABTU_PILIHAN_PETUGAS', defaultSabtu);
-    }
+  <div id="pesanNotifScanner" class="alert d-none py-2 px-3 small mb-2 fw-bold text-center"></div>
 
-    const savedLogin = localStorage.getItem('PETUGAS_AKTIF') || sessionStorage.getItem('PETUGAS_AKTIF');
-    if (savedLogin) {
-      petugasAktif = savedLogin;
-      localStorage.setItem('PETUGAS_AKTIF', petugasAktif);
-      bukaLayarUtama();
-    }
-    updateStatusAntrean();
-  });
+  <label class="form-label small fw-semibold mb-1">Atau Cari Manual Kepala Keluarga / Kode QR:</label>
+  <input class="form-control form-control-sm mb-2" list="datalistKK" id="cariManualInput" placeholder="Ketik nama warga atau PRK-RT..." onchange="pilihDariPencarian()">
+  <datalist id="datalistKK"></datalist>
+</div>
 
-  function formatYYYYMMDD(d) {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  }
+<!-- Form Input Setoran -->
+<div class="card card-custom p-3">
+  <span class="small fw-bold text-success d-block mb-2">2. SIMPAN SETORAN KE MEMORI HP</span>
 
-  function simpanTanggalPilihan() {
-    const val = document.getElementById('sabtuMulai').value;
-    if (val) {
-      localStorage.setItem('SABTU_PILIHAN_PETUGAS', val);
-      document.getElementById('infoSabtu').innerText = `✅ Tanggal penarikan dikunci: ${val}`;
-      const qrSekarang = document.getElementById('qrCode').value;
-      if (qrSekarang) {
-        prosesKodeQR(qrSekarang);
-      }
-    }
-  }
+  <form id="formSetoran" onsubmit="simpanSetoranLokal(event)">
+    <input type="hidden" id="noKK" value="-">
 
-  async function prosesLogin(e) {
-    e.preventDefault();
-    const u = document.getElementById('inputUser').value.trim();
-    const p = document.getElementById('inputPass').value.trim();
-    const msgBox = document.getElementById('loginMsg');
-    const btnLogin = document.getElementById('btnLogin');
-    msgBox.classList.add('d-none');
-    btnLogin.disabled = true;
-    btnLogin.innerText = "⏳ MEMVERIFIKASI & SINKRONISASI...";
+    <div class="mb-2">
+      <label class="form-label small fw-semibold mb-1">Kode QR KK</label>
+      <input type="text" id="qrCode" class="form-control form-control-sm bg-light fw-mono" placeholder="Otomatis dari hasil scan" readonly required>
+    </div>
 
-    try {
-      const res = await fetch(GAS_EXEC_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'loginUser', args: [u, p] })
-      });
-      const json = await res.json();
+    <div class="row g-2 mb-3">
+      <div class="col-8">
+        <label class="form-label small fw-semibold mb-1">Kepala Keluarga</label>
+        <input type="text" id="kepalaKeluarga" class="form-control form-control-sm bg-light fw-bold" readonly required>
+      </div>
+      <div class="col-4">
+        <label class="form-label small fw-semibold mb-1">RT</label>
+        <input type="text" id="rtKK" class="form-control form-control-sm bg-light text-center fw-bold" readonly required>
+      </div>
+    </div>
 
-      if (json.status === 'success' && json.data && json.data.success) {
-        petugasAktif = json.data.user.nama || u;
-        localStorage.setItem('PETUGAS_AKTIF', petugasAktif);
-        bukaLayarUtama();
-      } else {
-        throw new Error(json.data ? json.data.message : 'Login gagal');
-      }
-    } catch (err) {
-      msgBox.innerText = "❌ " + (err.message || "Nama petugas atau password salah!");
-      msgBox.classList.remove('d-none');
-    } finally {
-      btnLogin.disabled = false;
-      btnLogin.innerText = "MASUK APLIKASI";
-    }
-  }
+    <div class="mb-2">
+      <label class="form-label small fw-semibold mb-1">Jenis Setoran</label>
+      <div class="btn-group w-100" role="group">
+        <input type="radio" class="btn-check" name="opsiJenis" id="jenisUang" value="Uang" checked onchange="aturTampilanJenis()">
+        <label class="btn btn-outline-success btn-sm" for="jenisUang">💵 Uang Tunai</label>
 
-  function bukaLayarUtama() {
-    document.getElementById('layarLogin').classList.add('d-none');
-    document.getElementById('layarApp').classList.remove('d-none');
-    document.getElementById('infoPetugasLogin').innerText = "Petugas: " + petugasAktif;
+        <input type="radio" class="btn-check" name="opsiJenis" id="jenisBeras" value="Beras" onchange="aturTampilanJenis()">
+        <label class="btn btn-outline-success btn-sm" for="jenisBeras">🌾 Beras</label>
+      </div>
+    </div>
 
-    const cacheKK = localStorage.getItem('CACHE_DAFTAR_KK');
-    const cachePerelek = localStorage.getItem('CACHE_RIWAYAT_PERELEK');
-    if (cacheKK) {
-      daftarKK = JSON.parse(cacheKK);
-      riwayatPerelek = cachePerelek ? JSON.parse(cachePerelek) : [];
-      isiDatalistKK();
-      const badge = document.getElementById('statusSinkronBadge');
-      badge.className = 'badge bg-success';
-      badge.innerText = `✅ Siap (${daftarKK.length} KK • ${riwayatPerelek.length} Setoran)`;
-    }
+    <div id="blokUang" class="mb-3">
+      <label class="form-label small fw-semibold mb-1">Nominal Uang (Rp)</label>
+      <div class="d-flex gap-1 mb-2 flex-wrap">
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(5000)">5.000 (1 Mg)</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(10000)">10.000 (2 Mg)</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(15000)">15.000 (3 Mg)</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(20000)">20.000 (4 Mg)</button>
+      </div>
+      <input type="number" id="nominalUang" class="form-control" value="5000" min="0" step="500">
+    </div>
 
-    muatUlangDatabase(false);
-  }
+    <div id="blokBeras" class="mb-3 d-none">
+      <div class="row g-2">
+        <div class="col-7">
+          <label class="form-label small fw-semibold mb-1">Jumlah Beras</label>
+          <input type="number" id="jumlahBeras" class="form-control" value="0" min="0" step="0.5">
+        </div>
+        <div class="col-5">
+          <label class="form-label small fw-semibold mb-1">Satuan</label>
+          <select id="satuanBeras" class="form-select">
+            <option value="Gelas/Cangkir">Gelas/Cangkir</option>
+            <option value="Liter">Liter</option>
+          </select>
+        </div>
+      </div>
+    </div>
 
-  function logoutApp() {
-    localStorage.removeItem('PETUGAS_AKTIF');
-    sessionStorage.removeItem('PETUGAS_AKTIF');
-    location.reload();
-  }
-
-  async function muatUlangDatabase(tampilkanPesanManual) {
-    const badge = document.getElementById('statusSinkronBadge');
-    if (tampilkanPesanManual || daftarKK.length === 0) {
-      badge.className = 'badge bg-warning text-dark';
-      badge.innerText = 'Menyinkronkan...';
-    }
-
-    try {
-      const res = await fetch(GAS_EXEC_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'masukSebagaiWarga', args: [] })
-      });
-      const json = await res.json();
-
-      if (json.status === 'success' && json.data) {
-        const db = json.data.dashboard || json.data;
-        daftarKK = db.kkList || db.dataKK || [];
-        let rawPerelek = db.perelek || db.perelekList || db.riwayatPerelek || db.riwayatBayar || db.setoranList || [];
-        
-        try {
-          const gvizRes = await fetch(`${SHEET_URL_BASE}/gviz/tq?tqx=out:json&sheet=Perelek`);
-          const gvizText = await gvizRes.text();
-          const jsonStr = gvizText.substring(gvizText.indexOf('{'), gvizText.lastIndexOf('}') + 1);
-          const gvizData = JSON.parse(jsonStr);
-          if (gvizData.table && gvizData.table.rows) {
-            rawPerelek = gvizData.table.rows.map(r => {
-              const c = r.c || [];
-              return {
-                id: c[0] ? c[0].v : '',
-                tanggal: c[1] ? (c[1].f || c[1].v) : '',
-                qr: c[2] ? c[2].v : '',
-                nama: c[4] ? c[4].v : '',
-                rt: c[5] ? c[5].v : '',
-                jenis: c[6] ? c[6].v : '',
-                uang: c[11] ? c[11].v : 0,
-                minggu: c[12] ? Number(c[12].v || 1) : 1,
-                sabtuMulai: c[13] ? String(c[13].f || c[13].v).trim() : ''
-              };
-            }).filter(item => item.qr && item.qr !== 'QR_KK');
-          }
-        } catch (eGviz) {
-          console.log("Menggunakan riwayat dari Apps Script");
-        }
-
-        riwayatPerelek = rawPerelek;
-
-        localStorage.setItem('CACHE_DAFTAR_KK', JSON.stringify(daftarKK));
-        localStorage.setItem('CACHE_RIWAYAT_PERELEK', JSON.stringify(riwayatPerelek));
-
-        isiDatalistKK();
-
-        badge.className = 'badge bg-success';
-        badge.innerText = `✅ Tersinkron (${daftarKK.length} KK • ${riwayatPerelek.length} Setoran)`;
-        
-        if (tampilkanPesanManual) {
-          tampilkanNotifScanner('✨ Data KK & Status Lunas berhasil diperbarui!', 'success');
-        }
-      }
-    } catch (err) {
-      if (daftarKK.length > 0) {
-        badge.className = 'badge bg-secondary';
-        badge.innerText = `💾 Mode Offline (${daftarKK.length} KK Tersimpan)`;
-      } else {
-        badge.className = 'badge bg-danger';
-        badge.innerText = 'Gagal Sinkron (Cek Internet)';
-      }
-    }
-  }
-
-  function isiDatalistKK() {
-    const dl = document.getElementById('datalistKK');
-    dl.innerHTML = '';
-    daftarKK.forEach(item => {
-      const opt = document.createElement('option');
-      opt.value = item.qr;
-      opt.label = item.nama + ' (' + item.rt + ')';
-      dl.appendChild(opt);
-    });
-  }
-
-  function mulaiScanManual() {
-    document.getElementById('reader').innerHTML = '';
-    html5QrCode = new Html5Qrcode("reader");
-
-    document.getElementById('btnBukaKamera').classList.add('d-none');
-    document.getElementById('btnTutupKamera').classList.remove('d-none');
-
-    const config = { fps: 10, qrbox: { width: 220, height: 220 } };
-    
-    html5QrCode.start(
-      { facingMode: "environment" },
-      config,
-      (decodedText) => {
-        hentikanKameraManual();
-        prosesKodeQR(decodedText);
-      },
-      () => {}
-    ).catch(() => {
-      html5QrCode.start(
-        { facingMode: "user" },
-        config,
-        (decodedText) => {
-          hentikanKameraManual();
-          prosesKodeQR(decodedText);
-        },
-        () => {}
-      );
-    });
-  }
-
-  function hentikanKameraManual() {
-    if (html5QrCode && html5QrCode.isScanning) {
-      html5QrCode.stop().then(() => {
-        tampilkanPlaceholderKamera();
-      }).catch(() => {
-        tampilkanPlaceholderKamera();
-      });
-    } else {
-      tampilkanPlaceholderKamera();
-    }
-  }
-
-  function tampilkanPlaceholderKamera() {
-    document.getElementById('btnBukaKamera').classList.remove('d-none');
-    document.getElementById('btnTutupKamera').classList.add('d-none');
-    document.getElementById('reader').innerHTML = `
-      <div id="placeholderKamera" class="p-3 text-center text-white">
-        <div style="font-size: 36px;">📷</div>
-        <small class="text-light opacity-75">Kamera dimatikan untuk menghemat baterai.<br>Klik <b>Buka Kamera Scan QR</b> saat tiba di rumah berikutnya.</small>
-      </div>`;
-  }
-
-  function pilihDariPencarian() {
-    const val = document.getElementById('cariManualInput').value.trim();
-    if (val) {
-      hentikanKameraManual();
-      prosesKodeQR(val);
-    }
-  }
-
-  function apakahTanggalTertutupLunas(sabtuMulaiStr, jumlahMinggu, sabtuTargetStr) {
-    if (!sabtuMulaiStr || !sabtuTargetStr) return false;
-    
-    let cleanMulai = String(sabtuMulaiStr).trim().substring(0, 10);
-    if (cleanMulai.includes('/')) {
-      const p = cleanMulai.split('/');
-      if (p[2] && p[2].length === 4) cleanMulai = `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
-    }
-
-    const pMulai = cleanMulai.split('-');
-    if (pMulai.length !== 3) return cleanMulai === sabtuTargetStr;
-
-    const jmlMg = Math.max(1, Number(jumlahMinggu || 1));
-    const dtMulai = new Date(Number(pMulai[0]), Number(pMulai[1]) - 1, Number(pMulai[2]));
-
-    for (let i = 0; i < jmlMg; i++) {
-      const dtCek = new Date(dtMulai);
-      dtCek.setDate(dtCek.getDate() + (i * 7));
-      if (formatYYYYMMDD(dtCek) === sabtuTargetStr) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  function prosesKodeQR(inputStr) {
-    const bersih = String(inputStr).trim().toUpperCase();
-    const cocok = daftarKK.find(k => String(k.qr).trim().toUpperCase() === bersih || String(k.nama).trim().toUpperCase() === bersih);
-
-    if (cocok) {
-      const sabtuTarget = document.getElementById('sabtuMulai').value;
-      const qrWarga = String(cocok.qr).trim().toUpperCase();
-      const namaWarga = String(cocok.nama).trim().toUpperCase();
-
-      const sudahLunasServer = riwayatPerelek.some(r => {
-        const rQr = String(r.qr || r.qrCode || r.QR_KK || '').trim().toUpperCase();
-        const rNama = String(r.nama || r.kepalaKeluarga || r['Kepala Keluarga'] || '').trim().toUpperCase();
-        const rSabtuMulai = r.sabtuMulai || r['Sabtu Mulai'] || r.tanggal || '';
-        const rMinggu = r.minggu || r.Minggu || (Number(r.uang || r.nominal || 0) >= 5000 ? Math.floor(Number(r.uang || r.nominal) / 5000) : 1);
-
-        const cocokOrang = (rQr === qrWarga || rNama === namaWarga);
-        if (!cocokOrang) return false;
-
-        return apakahTanggalTertutupLunas(rSabtuMulai, rMinggu, sabtuTarget);
-      });
-
-      let antreanLokal = JSON.parse(localStorage.getItem('SETORAN_LOKAL_HP') || '[]');
-      const sudahLunasLokal = antreanLokal.some(r => {
-        const cocokLokal = (String(r.qrCode).trim().toUpperCase() === qrWarga || String(r.kepalaKeluarga).trim().toUpperCase() === namaWarga);
-        if (!cocokLokal) return false;
-        const mgLokal = Number(r.nominalUang || 0) >= 5000 ? Math.floor(Number(r.nominalUang) / 5000) : 1;
-        return apakahTanggalTertutupLunas(r.sabtuMulai, mgLokal, sabtuTarget);
-      });
-
-      document.getElementById('qrCode').value = cocok.qr;
-      document.getElementById('noKK').value = cocok.nokk || '-';
-      document.getElementById('kepalaKeluarga').value = cocok.nama;
-      document.getElementById('rtKK').value = cocok.rt;
-
-      if (sudahLunasServer || sudahLunasLokal) {
-        document.getElementById('btnSimpanLokal').disabled = true;
-        tampilkanNotifScanner(`❌ DITOLAK: KK ${cocok.nama} sudah lunas pada periode Sabtu ini!`, 'danger');
-      } else {
-        document.getElementById('btnSimpanLokal').disabled = false;
-        tampilkanNotifScanner(`✅ Warga ditemukan: ${cocok.nama}. Silakan masukkan setoran.`, 'success');
-      }
-    } else {
-      resetForm();
-      tampilkanNotifScanner('❌ DITOLAK: Kode QR / Warga tidak ditemukan di database!', 'danger');
-    }
-  }
-
-  function aturTampilanJenis() {
-    const jns = document.querySelector('input[name="opsiJenis"]:checked').value;
-    document.getElementById('blokUang').classList.toggle('d-none', jns !== 'Uang');
-    document.getElementById('blokBeras').classList.toggle('d-none', jns !== 'Beras');
-  }
-
-  function setUang(n) { document.getElementById('nominalUang').value = n; }
-
-  function simpanSetoranLokal(e) {
-    e.preventDefault();
-
-    const formPayload = {
-      qrCode: document.getElementById('qrCode').value,
-      noKK: document.getElementById('noKK').value || '-',
-      kepalaKeluarga: document.getElementById('kepalaKeluarga').value,
-      rtKK: document.getElementById('rtKK').value,
-      satuanBeras: document.getElementById('satuanBeras').value,
-      jumlahBeras: document.getElementById('jumlahBeras').value,
-      nominalUang: document.getElementById('nominalUang').value,
-      sabtuMulai: document.getElementById('sabtuMulai').value,
-      petugas: petugasAktif
-    };
-
-    let antrean = JSON.parse(localStorage.getItem('SETORAN_LOKAL_HP') || '[]');
-    antrean.push(formPayload);
-    localStorage.setItem('SETORAN_LOKAL_HP', JSON.stringify(antrean));
-
-    tampilkanNotifScanner(`💾 Setoran KK ${formPayload.kepalaKeluarga} tersimpan di HP!`, 'success');
-    updateStatusAntrean();
-    resetForm();
-  }
-
-  function updateStatusAntrean() {
-    let antrean = JSON.parse(localStorage.getItem('SETORAN_LOKAL_HP') || '[]');
-    const badge = document.getElementById('statusAntreanBadge');
-    badge.innerText = antrean.length + ' Data Tersimpan';
-    badge.className = antrean.length > 0 ? 'badge bg-warning text-dark' : 'badge bg-secondary';
-  }
-
-  async function uploadDataKeSpreadsheet() {
-    let antrean = JSON.parse(localStorage.getItem('SETORAN_LOKAL_HP') || '[]');
-    if (antrean.length === 0) {
-      alert("Tidak ada data tersimpan di HP untuk di-upload.");
-      return;
-    }
-
-    if (!confirm(`Akan mengunggah ${antrean.length} data setoran ke Spreadsheet utama. Lanjutkan?`)) return;
-
-    tampilkanNotifScanner('⏳ Mengunggah data ke Spreadsheet...', 'info');
-    let sisaAntrean = [];
-
-    for (let i = 0; i < antrean.length; i++) {
-      try {
-        const payloadData = {
-          action: 'simpanSetoranPerelek',
-          args: [antrean[i]]
-        };
-
-        const response = await fetch(GAS_EXEC_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(payloadData)
-        });
-        
-        const result = await response.json();
-        if (result.status !== 'success') {
-          sisaAntrean.push(antrean[i]);
-        }
-      } catch (err) {
-        sisaAntrean.push(antrean[i]);
-      }
-    }
-
-    localStorage.setItem('SETORAN_LOKAL_HP', JSON.stringify(sisaAntrean));
-    updateStatusAntrean();
-
-    if (sisaAntrean.length === 0) {
-      tampilkanNotifScanner('🎉 Berhasil! Semua data telah di-upload dan masuk ke spreadsheet.', 'success');
-      muatUlangDatabase(false);
-    } else {
-      tampilkanNotifScanner('⚠️ Sebagian data gagal di-upload. Periksa koneksi internet Anda.', 'danger');
-    }
-  }
-
-  function kirimRekapWhatsApp() {
-    let antrean = JSON.parse(localStorage.getItem('SETORAN_LOKAL_HP') || '[]');
-    const sabtuPilih = document.getElementById('sabtuMulai').value;
-    
-    if (antrean.length === 0) {
-      alert("Belum ada data setoran baru di HP untuk dikirim.");
-      return;
-    }
-
-    let pesan = `📋 *REKAP SETORAN PERELEK RW 15*\n`;
-    pesan += `📅 Periode Sabtu: ${sabtuPilih}\n`;
-    pesan += `👤 Petugas Penarik: ${petugasAktif}\n`;
-    pesan += `----------------------------------------\n`;
-
-    let totalUang = 0;
-    let totalBeras = 0;
-
-    antrean.forEach((item, index) => {
-      let infoSetor = Number(item.nominalUang || 0) > 0 ? `Rp ${Number(item.nominalUang).toLocaleString('id-ID')}` : `${item.jumlahBeras} ${item.satuanBeras || 'Satuan'}`;
-      pesan += `${index + 1}. ${item.kepalaKeluarga} (${item.rtKK}) - ${infoSetor}\n`;
-      if (Number(item.nominalUang || 0) > 0) totalUang += Number(item.nominalUang);
-      if (Number(item.jumlahBeras || 0) > 0) totalBeras += Number(item.jumlahBeras);
-    });
-
-    pesan += `----------------------------------------\n`;
-    pesan += `💵 *TOTAL UANG:* Rp ${totalUang.toLocaleString('id-ID')}\n`;
-    pesan += `🌾 *TOTAL BERAS:* ${totalBeras} Satuan\n`;
-    pesan += `_Laporan dikirim via Aplikasi Petugas RW 15 Digital_`;
-
-    const encodedPesan = encodeURIComponent(pesan);
-    window.open(`https://api.whatsapp.com/send?text=${encodedPesan}`, '_blank');
-  }
-
-  function resetForm() {
-    document.getElementById('qrCode').value = '';
-    document.getElementById('kepalaKeluarga').value = '';
-    document.getElementById('rtKK').value = '';
-    document.getElementById('btnSimpanLokal').disabled = true;
-    document.getElementById('cariManualInput').value = '';
-  }
-
-  function tampilkanNotifScanner(pesan, tipe) {
-    const box = document.getElementById('pesanNotifScanner');
-    box.className = 'alert alert-' + tipe + ' py-2 px-3 small mb-2 fw-bold text-center';
-    box.innerText = pesan;
-    box.classList.remove('d-none');
-  }
-</script>
-</body>
-</html>
+    <div class="d-grid">
+      <button type="submit" id="btnSimpanLokal" class="btn btn-success btn-action" disabled>
+        💾 SIMPAN KE HP
+      </button>
+    </div>
+  </form>
+</div>
