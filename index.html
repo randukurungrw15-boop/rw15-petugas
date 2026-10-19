@@ -51,20 +51,24 @@
       <small class="opacity-75">Penarikan Khusus Hari Sabtu</small>
     </div>
 
-    <!-- Status & Periode Hari Sabtu -->
+    <!-- Panel Status Antrean & Upload ke Spreadsheet -->
     <div class="card card-custom p-3 mb-3">
       <div class="d-flex justify-content-between align-items-center mb-2">
-        <span class="small fw-bold text-secondary">STATUS KONEKSI</span>
-        <span id="statusKoneksi" class="badge bg-warning text-dark">Memuat Data...</span>
+        <span class="small fw-bold text-secondary">STATUS DATA DI HP</span>
+        <span id="statusAntreanBadge" class="badge bg-secondary">0 Data Tersimpan</span>
       </div>
+
       <div class="mb-2">
-        <label class="form-label small fw-semibold mb-1">📅 Pilih Tanggal Sabtu Penarikan</label>
+        <label class="form-label small fw-semibold mb-1">📅 Tanggal Sabtu Penarikan</label>
         <input type="date" id="sabtuMulai" class="form-control form-control-sm fw-bold" required onchange="cekRiwayatPembayaran()">
       </div>
-      <!-- Tombol Rekap Setoran untuk Bendahara -->
-      <div class="d-grid mt-2">
-        <button type="button" class="btn btn-outline-success btn-sm fw-bold" onclick="unduhRekapBendahara()">
-          📋 Unduh / Kirim Rekap Setoran ke Bendahara
+
+      <div class="d-grid gap-2 mt-2">
+        <button type="button" class="btn btn-primary btn-sm fw-bold" onclick="uploadDataKeSpreadsheet()">
+          ☁️ Upload Data ke Spreadsheet (Update Keuangan Otomatis)
+        </button>
+        <button type="button" class="btn btn-success btn-sm fw-bold" onclick="kirimRekapWhatsApp()">
+          💬 Kirim Rekap ke WhatsApp Bendahara
         </button>
       </div>
     </div>
@@ -81,6 +85,9 @@
       
       <div id="reader" class="mb-3"></div>
 
+      <!-- Kotak Notifikasi Hasil Scan / Penolakan Ganda -->
+      <div id="pesanNotifScanner" class="alert d-none py-2 px-3 small mb-2 fw-bold text-center"></div>
+
       <label class="form-label small fw-semibold mb-1">Atau Cari Manual Kepala Keluarga / Kode QR:</label>
       <input class="form-control form-control-sm mb-2" list="datalistKK" id="cariManualInput" placeholder="Ketik nama warga atau PRK-RT..." onchange="pilihDariPencarian()">
       <datalist id="datalistKK"></datalist>
@@ -88,9 +95,9 @@
 
     <!-- Form Input Setoran -->
     <div class="card card-custom p-3">
-      <span class="small fw-bold text-success d-block mb-2">2. DATA SETORAN PERELEK</span>
+      <span class="small fw-bold text-success d-block mb-2">2. SIMPAN SETORAN KE MEMORI HP</span>
 
-      <form id="formSetoran" onsubmit="kirimKeAppsScript(event)">
+      <form id="formSetoran" onsubmit="simpanSetoranLokal(event)">
         <input type="hidden" id="noKK" value="-">
 
         <div class="mb-2">
@@ -147,11 +154,9 @@
           </div>
         </div>
 
-        <div id="pesanNotif" class="alert d-none py-2 px-3 small mb-3"></div>
-
         <div class="d-grid">
-          <button type="submit" id="btnKirimGAS" class="btn btn-success btn-action" disabled>
-            🚀 KIRIM LANGSUNG KE SPREADSHEET RW 15
+          <button type="submit" id="btnSimpanLokal" class="btn btn-success btn-action" disabled>
+            💾 SIMPAN KE HP (LANJUT SCAN BERIKUTNYA)
           </button>
         </div>
       </form>
@@ -173,8 +178,8 @@
       petugasAktif = savedLogin;
       tampilkanHalamanApp();
     }
+    updateStatusAntrean();
 
-    // Otomatis arahkan tanggal ke Hari Sabtu terdekat
     const today = new Date();
     const diffToSat = (6 - today.getDay() + 7) % 7;
     today.setDate(today.getDate() + diffToSat);
@@ -223,10 +228,6 @@
   }
 
   async function muatUlangDatabase() {
-    const badge = document.getElementById('statusKoneksi');
-    badge.className = 'badge bg-warning text-dark';
-    badge.innerText = 'Memuat Data KK...';
-
     try {
       const res = await fetch(GAS_EXEC_URL, {
         method: 'POST',
@@ -249,12 +250,9 @@
           opt.label = item.nama + ' (' + item.rt + ')';
           dl.appendChild(opt);
         });
-        badge.className = 'badge bg-success';
-        badge.innerText = 'Terhubung Online (' + daftarKK.length + ' KK)';
       }
     } catch (err) {
-      badge.className = 'badge bg-danger';
-      badge.innerText = 'Gagal Terhubung (Cek Internet)';
+      console.log("Mode offline database");
     }
   }
 
@@ -318,22 +316,31 @@
     const cocok = daftarKK.find(k => String(k.qr).trim().toUpperCase() === bersih || String(k.nama).trim().toUpperCase() === bersih);
 
     if (cocok) {
-      document.getElementById('qrCode').value = cocok.qr;
-      document.getElementById('noKK').value = cocok.nokk || '-';
-      document.getElementById('kepalaKeluarga').value = cocok.nama;
-      document.getElementById('rtKK').value = cocok.rt;
-      document.getElementById('btnKirimGAS').disabled = false;
-
       const sabtuPilih = document.getElementById('sabtuMulai').value;
-      const sudahBayar = riwayatSudahBayar.some(r => String(r.qr).trim().toUpperCase() === bersih && String(r.tanggal) === String(sabtuPilih));
+      
+      const sudahBayarServer = riwayatSudahBayar.some(r => String(r.qr).trim().toUpperCase() === bersih && String(r.tanggal) === String(sabtuPilih));
+      let antreanLokal = JSON.parse(localStorage.getItem('SETORAN_LOKAL_HP') || '[]');
+      const sudahBayarLokal = antreanLokal.some(r => String(r.qrCode).trim().toUpperCase() === bersih && String(r.sabtuMulai) === String(sabtuPilih));
 
-      if (sudahBayar) {
-        tampilkanNotif('warning', '⚠️ PERHATIAN: Warga ' + cocok.nama + ' sudah tercatat membayar untuk periode Sabtu ' + sabtuPilih + '!');
+      if (sudahBayarServer || sudahBayarLokal) {
+        document.getElementById('qrCode').value = cocok.qr;
+        document.getElementById('noKK').value = cocok.nokk || '-';
+        document.getElementById('kepalaKeluarga').value = cocok.nama;
+        document.getElementById('rtKK').value = cocok.rt;
+        document.getElementById('btnSimpanLokal').disabled = true;
+        
+        tampilkanNotifScanner(`❌ DITOLAK: KK ${cocok.nama} sudah lunas pada periode Sabtu ini!`, 'danger');
       } else {
-        tampilkanNotif('success', '✅ Warga ditemukan: ' + cocok.nama);
+        document.getElementById('qrCode').value = cocok.qr;
+        document.getElementById('noKK').value = cocok.nokk || '-';
+        document.getElementById('kepalaKeluarga').value = cocok.nama;
+        document.getElementById('rtKK').value = cocok.rt;
+        document.getElementById('btnSimpanLokal').disabled = false;
+        
+        tampilkanNotifScanner(`✅ Warga ditemukan: ${cocok.nama}. Silakan masukkan setoran.`, 'success');
       }
     } else {
-      tampilkanNotif('danger', '❌ Kode QR / Warga tidak ditemukan!');
+      tampilkanNotifScanner('❌ DITOLAK: Kode QR / Warga tidak ditemukan di database!', 'danger');
     }
   }
 
@@ -345,11 +352,8 @@
 
   function setUang(n) { document.getElementById('nominalUang').value = n; }
 
-  async function kirimKeAppsScript(e) {
+  function simpanSetoranLokal(e) {
     e.preventDefault();
-    const btn = document.getElementById('btnKirimGAS');
-    btn.disabled = true;
-    btn.innerText = '⏳ MENGIRIM KE SPREADSHEET...';
 
     const formPayload = {
       qrCode: document.getElementById('qrCode').value,
@@ -363,74 +367,117 @@
       petugas: petugasAktif
     };
 
-    try {
-      const response = await fetch(GAS_EXEC_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'simpanSetoranPerelek', args: [formPayload] })
-      });
-      const result = await response.json();
+    let antrean = JSON.parse(localStorage.getItem('SETORAN_LOKAL_HP') || '[]');
+    antrean.push(formPayload);
+    localStorage.setItem('SETORAN_LOKAL_HP', JSON.stringify(antrean));
 
-      if (result.status === 'success') {
-        tampilkanNotif('success', '🎉 Berhasil! Data setoran sudah masuk otomatis ke Spreadsheet RW 15.');
-        resetForm();
-        muatUlangDatabase();
-      } else {
-        throw new Error(result.message);
-      }
-    } catch (err) {
-      tampilkanNotif('danger', '⚠️ Gagal mengirim! Periksa koneksi internet.');
-      btn.disabled = false;
-    } finally {
-      btn.innerText = '🚀 KIRIM LANGSUNG KE SPREADSHEET RW 15';
-    }
+    tampilkanNotifScanner('💾 Tersimpan di HP! Klik [Scan Lagi] untuk rumah berikutnya.', 'success');
+    updateStatusAntrean();
+    resetForm();
   }
 
-  // FITUR REKAP SETORAN KHUSUS BENDAHARA PADA HARI SABTU
-  function unduhRekapBendahara() {
-    const sabtuPilih = document.getElementById('sabtuMulai').value;
-    const rekapList = riwayatSudahBayar.filter(r => String(r.tanggal) === String(sabtuPilih));
+  function updateStatusAntrean() {
+    let antrean = JSON.parse(localStorage.getItem('SETORAN_LOKAL_HP') || '[]');
+    const badge = document.getElementById('statusAntreanBadge');
+    badge.innerText = antrean.length + ' Data Tersimpan di HP';
+    badge.className = antrean.length > 0 ? 'badge bg-warning text-dark' : 'badge bg-secondary';
+  }
 
-    if (rekapList.length === 0) {
-      alert("Belum ada data setoran yang tercatat untuk tanggal Sabtu " + sabtuPilih);
+  async function uploadDataKeSpreadsheet() {
+    let antrean = JSON.parse(localStorage.getItem('SETORAN_LOKAL_HP') || '[]');
+    if (antrean.length === 0) {
+      alert("Tidak ada data tersimpan di HP untuk di-upload.");
       return;
     }
 
-    let teksRekap = `REKAP SETORAN PERELEK RW 15\nPeriode Sabtu: ${sabtuPilih}\nPetugas Penarik: ${petugasAktif}\n----------------------------------------\n`;
+    if (!confirm(`Akan mengunggah ${antrean.length} data setoran ke Spreadsheet utama. Lanjutkan?`)) return;
+
+    tampilkanNotifScanner('⏳ Mengunggah data ke Spreadsheet...', 'info');
+    let sisaAntrean = [];
+
+    for (let i = 0; i < antrean.length; i++) {
+      try {
+        const response = await fetch(GAS_EXEC_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'simpanSetoranPerelek', args: [antrean[i]] })
+        });
+        const result = await response.json();
+        if (result.status !== 'success') {
+          sisaAntrean.push(antrean[i]);
+        }
+      } catch (err) {
+        sisaAntrean.push(antrean[i]);
+      }
+    }
+
+    localStorage.setItem('SETORAN_LOKAL_HP', JSON.stringify(sisaAntrean));
+    updateStatusAntrean();
+
+    if (sisaAntrean.length === 0) {
+      tampilkanNotifScanner('🎉 Berhasil! Semua data telah di-upload dan laporan keuangan ter-update otomatis.', 'success');
+      muatUlangDatabase();
+    } else {
+      tampilkanNotifScanner('⚠️ Sebagian data gagal di-upload karena koneksi terputus.', 'danger');
+    }
+  }
+
+  function kirimRekapWhatsApp() {
+    let antrean = JSON.parse(localStorage.getItem('SETORAN_LOKAL_HP') || '[]');
+    const sabtuPilih = document.getElementById('sabtuMulai').value;
+    
+    let rekapList = [...antrean];
+    riwayatSudahBayar.forEach(r => {
+      if (String(r.tanggal) === String(sabtuPilih) && !rekapList.some(item => item.qrCode === r.qr)) {
+        rekapList.push({
+          kepalaKeluarga: r.nama,
+          rtKK: r.rt,
+          jenis: r.jenis,
+          nominalUang: r.nominal,
+          jumlahBeras: r.jumlah
+        });
+      }
+    });
+
+    if (rekapList.length === 0) {
+      alert("Belum ada data setoran untuk periode Sabtu " + sabtuPilih);
+      return;
+    }
+
+    let pesan = `📋 *REKAP SETORAN PERELEK RW 15*\n`;
+    pesan += `📅 Periode Sabtu: ${sabtuPilih}\n`;
+    pesan += `👤 Petugas Penarik: ${petugasAktif}\n`;
+    pesan += `----------------------------------------\n`;
+
     let totalUang = 0;
     let totalBeras = 0;
 
     rekapList.forEach((item, index) => {
-      teksRekap += `${index + 1}. ${item.nama} (RT ${item.rt}) - ${item.jenis}: ${item.nominal || item.jumlah}\n`;
-      if (item.jenis === 'Uang') totalUang += Number(item.nominal || 0);
-      if (item.jenis === 'Beras') totalBeras += Number(item.jumlah || 0);
+      let infoSetor = Number(item.nominalUang) > 0 ? `Rp ${Number(item.nominalUang).toLocaleString('id-ID')}` : `${item.jumlahBeras} ${item.satuanBeras || 'Satuan'}`;
+      pesan += `${index + 1}. ${item.kepalaKeluarga} (RT ${item.rtKK}) - ${infoSetor}\n`;
+      if (Number(item.nominalUang) > 0) totalUang += Number(item.nominalUang);
+      if (Number(item.jumlahBeras) > 0) totalBeras += Number(item.jumlahBeras);
     });
 
-    teksRekap += `----------------------------------------\nTOTAL UANG: Rp ${totalUang.toLocaleString('id-ID')}\nTOTAL BERAS: ${totalBeras} Satuan\n`;
+    pesan += `----------------------------------------\n`;
+    pesan += `💵 *TOTAL UANG:* Rp ${totalUang.toLocaleString('id-ID')}\n`;
+    pesan += `🌾 *TOTAL BERAS:* ${totalBeras} Satuan\n`;
+    pesan += `_Laporan dikirim via Aplikasi Petugas RW 15 Digital_`;
 
-    // Unduh file rekap otomatis ke HP petugas untuk diserahkan/dikirim ke bendahara
-    const blob = new Blob([teksRekap], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Rekap_Perelek_Sabtu_${sabtuPilih}_${petugasAktif}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-
-    tampilkanNotif('success', '📋 File rekap setoran berhasil diunduh untuk diserahkan ke Bendahara!');
+    const encodedPesan = encodeURIComponent(pesan);
+    window.open(`https://api.whatsapp.com/send?text=${encodedPesan}`, '_blank');
   }
 
   function resetForm() {
     document.getElementById('qrCode').value = '';
     document.getElementById('kepalaKeluarga').value = '';
     document.getElementById('rtKK').value = '';
-    document.getElementById('btnKirimGAS').disabled = true;
+    document.getElementById('btnSimpanLokal').disabled = true;
   }
 
-  function tampilkanNotif(tepe, pesan) {
-    const box = document.getElementById('pesanNotif');
-    box.className = 'alert alert-' + tepe + ' py-2 px-3 small mb-3';
+  function tampilkanNotifScanner(pesan, tipe) {
+    const box = document.getElementById('pesanNotifScanner');
+    box.className = 'alert alert-' + tipe + ' py-2 px-3 small mb-2 fw-bold text-center';
     box.innerText = pesan;
     box.classList.remove('d-none');
   }
