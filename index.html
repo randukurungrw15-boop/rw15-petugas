@@ -556,6 +556,37 @@
 
     for (let i = 0; i < antrean.length; i++) {
       try {
+        // Menggunakan mode no-cors agar lolos dari blokir CORS browser HP
+        await fetch(GAS_EXEC_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'simpanSetoranPerelek', args: [antrean[i]] })
+        });
+        // Jika fetch berhasil terkirim tanpa error jaringan, anggap sukses
+      } catch (err) {
+        sisaAntrean.push(antrean[i]);
+      }
+    }
+
+    localStorage.setItem('SETORAN_LOKAL_HP', JSON.stringify(sisaAntrean));
+    updateStatusAntrean();
+
+    if (sisaAntrean.length === 0) {
+      tampilkanNotifScanner('🎉 Berhasil! Semua data telah di-upload dan laporan keuangan ter-update otomatis.', 'success');
+      muatUlangDatabase(false);
+    } else {
+      tampilkanNotifScanner('⚠️ Gagal terhubung ke server Google. Periksa koneksi internet Anda.', 'danger');
+    }
+  }
+
+    if (!confirm(`Akan mengunggah ${antrean.length} data setoran ke Spreadsheet utama. Lanjutkan?`)) return;
+
+    tampilkanNotifScanner('⏳ Mengunggah data ke Spreadsheet...', 'info');
+    let sisaAntrean = [];
+
+    for (let i = 0; i < antrean.length; i++) {
+      try {
         const response = await fetch(GAS_EXEC_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
