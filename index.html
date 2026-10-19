@@ -238,9 +238,10 @@
 
       if (json.status === 'success' && json.data && json.data.dashboard) {
         daftarKK = json.data.dashboard.kkList || [];
-        if (json.data.dashboard.riwayatBayar) {
-          riwayatSudahBayar = json.data.dashboard.riwayatBayar;
-        }
+        
+        // Memastikan data riwayat bayar ditarik dengan aman dari berbagai struktur objek
+        const db = json.data.dashboard;
+        riwayatSudahBayar = db.riwayatBayar || db.perelekList || db.riwayat || [];
 
         const dl = document.getElementById('datalistKK');
         dl.innerHTML = '';
@@ -318,9 +319,18 @@
     if (cocok) {
       const sabtuPilih = document.getElementById('sabtuMulai').value;
       
-      const sudahBayarServer = riwayatSudahBayar.some(r => String(r.qr).trim().toUpperCase() === bersih && String(r.tanggal) === String(sabtuPilih));
+      // Pengecekan riwayat bayar yang lebih fleksibel mencakup QR, Nama, atau NoKK pada tanggal yang sama
+      const sudahBayarServer = riwayatSudahBayar.some(r => {
+        const rQr = String(r.qr || r.qrCode || '').trim().toUpperCase();
+        const rNama = String(r.nama || r.kepalaKeluarga || '').trim().toUpperCase();
+        const rTgl = String(r.tanggal || r.sabtuMulai || '').trim();
+        return (rQr === bersih || rNama === bersih) && rTgl === String(sabtuPilih);
+      });
+
       let antreanLokal = JSON.parse(localStorage.getItem('SETORAN_LOKAL_HP') || '[]');
-      const sudahBayarLokal = antreanLokal.some(r => String(r.qrCode).trim().toUpperCase() === bersih && String(r.sabtuMulai) === String(sabtuPilih));
+      const sudahBayarLokal = antreanLokal.some(r => {
+        return (String(r.qrCode).trim().toUpperCase() === bersih || String(r.kepalaKeluarga).trim().toUpperCase() === bersih) && String(r.sabtuMulai) === String(sabtuPilih);
+      });
 
       if (sudahBayarServer || sudahBayarLokal) {
         document.getElementById('qrCode').value = cocok.qr;
@@ -428,13 +438,15 @@
     
     let rekapList = [...antrean];
     riwayatSudahBayar.forEach(r => {
-      if (String(r.tanggal) === String(sabtuPilih) && !rekapList.some(item => item.qrCode === r.qr)) {
+      const rQr = r.qr || r.qrCode || '';
+      const rTgl = r.tanggal || r.sabtuMulai || '';
+      if (String(rTgl) === String(sabtuPilih) && !rekapList.some(item => item.qrCode === rQr)) {
         rekapList.push({
-          kepalaKeluarga: r.nama,
-          rtKK: r.rt,
+          kepalaKeluarga: r.nama || r.kepalaKeluarga,
+          rtKK: r.rt || r.rtKK,
           jenis: r.jenis,
-          nominalUang: r.nominal,
-          jumlahBeras: r.jumlah
+          nominalUang: r.nominal || r.nominalUang,
+          jumlahBeras: r.jumlah || r.jumlahBeras
         });
       }
     });
@@ -453,10 +465,10 @@
     let totalBeras = 0;
 
     rekapList.forEach((item, index) => {
-      let infoSetor = Number(item.nominalUang) > 0 ? `Rp ${Number(item.nominalUang).toLocaleString('id-ID')}` : `${item.jumlahBeras} ${item.satuanBeras || 'Satuan'}`;
-      pesan += `${index + 1}. ${item.kepalaKeluarga} (RT ${item.rtKK}) - ${infoSetor}\n`;
-      if (Number(item.nominalUang) > 0) totalUang += Number(item.nominalUang);
-      if (Number(item.jumlahBeras) > 0) totalBeras += Number(item.jumlahBeras);
+      let infoSetor = Number(item.nominalUang || 0) > 0 ? `Rp ${Number(item.nominalUang).toLocaleString('id-ID')}` : `${item.jumlahBeras || item.jumlah} ${item.satuanBeras || 'Satuan'}`;
+      pesan += `${index + 1}. ${item.kepalaKeluarga} (RT ${item.rtKK || item.rt}) - ${infoSetor}\n`;
+      if (Number(item.nominalUang || 0) > 0) totalUang += Number(item.nominalUang);
+      if (Number(item.jumlahBeras || item.jumlah || 0) > 0) totalBeras += Number(item.jumlahBeras || item.jumlah);
     });
 
     pesan += `----------------------------------------\n`;
