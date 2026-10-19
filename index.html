@@ -27,7 +27,7 @@
     <form onsubmit="prosesLogin(event)">
       <div class="mb-3">
         <label class="form-label small fw-semibold">Nama Petugas / Username</label>
-        <input type="text" id="inputUser" class="form-control" placeholder="Contoh: username/email" required>
+        <input type="text" id="inputUser" class="form-control" placeholder="Contoh: Dandi Supriatna" required>
       </div>
       <div class="mb-3">
         <label class="form-label small fw-semibold">PIN / Password Petugas</label>
@@ -51,14 +51,11 @@
       <small class="opacity-75">Scan QR & Input Cepat</small>
     </div>
 
-    <!-- Status & Info Antrean Offline -->
+    <!-- Status Koneksi Online -->
     <div class="card card-custom p-3 mb-3">
       <div class="d-flex justify-content-between align-items-center mb-2">
         <span class="small fw-bold text-secondary">STATUS KONEKSI</span>
         <span id="statusKoneksi" class="badge bg-warning text-dark">Memeriksa...</span>
-      </div>
-      <div id="infoAntrean" class="alert alert-warning py-1 px-2 small mb-2 d-none">
-        ⚠️ Ada <span id="jmlAntrean">0</span> data offline di HP. <button class="btn btn-sm btn-dark py-0 ms-1" onclick="sinkronkanDataOffline()">Kirim Sekarang</button>
       </div>
       <div class="row g-2">
         <div class="col-12">
@@ -171,7 +168,6 @@
       petugasAktif = savedLogin;
       tampilkanHalamanApp();
     }
-    cekAntreanOffline();
 
     const today = new Date();
     const diffToSat = (6 - today.getDay() + 7) % 7;
@@ -202,7 +198,7 @@
         throw new Error(json.data ? json.data.message : 'Login gagal');
       }
     } catch (err) {
-      msgBox.innerText = "❌ " + (err.message || "Nama petugas atau password salah!");
+      msgBox.innerText = "❌ " + (err.message || "Nama petugas atau password salah / Gagal terhubung internet!");
       msgBox.classList.remove('d-none');
     }
   }
@@ -244,15 +240,14 @@
           dl.appendChild(opt);
         });
         badge.className = 'badge bg-success';
-        badge.innerText = 'Terhubung (' + daftarKK.length + ' KK)';
+        badge.innerText = 'Terhubung Online (' + daftarKK.length + ' KK)';
       }
     } catch (err) {
       badge.className = 'badge bg-danger';
-      badge.innerText = 'Mode Offline';
+      badge.innerText = 'Gagal Terhubung (Cek Internet)';
     }
   }
 
-  // INISIALISASI KAMERA BELAKANG & BERHENTI OTOMATIS SAAT KODE TERBACA
   function inisialisasiScanner() {
     if (!html5QrCode) {
       html5QrCode = new Html5Qrcode("reader");
@@ -267,23 +262,18 @@
     
     const config = { fps: 10, qrbox: { width: 220, height: 220 } };
     
-    // Coba langsung kunci ke kamera belakang (environment)
     html5QrCode.start(
       { facingMode: "environment" },
       config,
       (decodedText) => {
-        // KETIKA QR BERHASIL TERBACA, HENTIKAN KAMERA OTOMATIS
         html5QrCode.stop().then(() => {
           prosesKodeQR(decodedText);
-        }).catch((err) => {
+        }).catch(() => {
           prosesKodeQR(decodedText);
         });
       },
-      (errorMessage) => {
-        // Mengabaikan error saat proses pencarian frame QR berlangsung
-      }
-    ).catch((err) => {
-      // Fallback jika facingMode environment gagal, gunakan kamera default apa saja
+      () => {}
+    ).catch(() => {
       html5QrCode.start(
         { facingMode: "user" },
         config,
@@ -319,7 +309,7 @@
       document.getElementById('kepalaKeluarga').value = cocok.nama;
       document.getElementById('rtKK').value = cocok.rt;
       document.getElementById('btnKirimGAS').disabled = false;
-      tampilkanNotif('success', '✅ Warga ditemukan: ' + cocok.nama + ' (Kamera berhenti)');
+      tampilkanNotif('success', '✅ Warga ditemukan: ' + cocok.nama);
     } else {
       tampilkanNotif('danger', '❌ Kode QR / Warga tidak ditemukan!');
     }
@@ -333,11 +323,12 @@
 
   function setUang(n) { document.getElementById('nominalUang').value = n; }
 
+  // KIRIM DATA ONLINE LANGSUNG KE SPREADSHEET
   async function kirimKeAppsScript(e) {
     e.preventDefault();
     const btn = document.getElementById('btnKirimGAS');
     btn.disabled = true;
-    btn.innerText = '⏳ MENYIMPAN...';
+    btn.innerText = '⏳ MENGIRIM KE SPREADSHEET...';
 
     const formPayload = {
       qrCode: document.getElementById('qrCode').value,
@@ -360,68 +351,16 @@
       const result = await response.json();
 
       if (result.status === 'success') {
-        tampilkanNotif('success', '🎉 Berhasil dikirim ke Spreadsheet!');
+        tampilkanNotif('success', '🎉 Berhasil! Data sudah masuk ke Spreadsheet RW 15.');
         resetForm();
       } else {
         throw new Error(result.message);
       }
     } catch (err) {
-      simpanKeLocalStorage(formPayload);
-      tampilkanNotif('warning', '⚠️ HP Offline! Data disimpan di memori HP. Akan terkirim otomatis saat ada internet.');
-      resetForm();
+      tampilkanNotif('danger', '⚠️ Gagal mengirim! Periksa kembali koneksi internet Anda.');
+      btn.disabled = false;
     } finally {
       btn.innerText = '🚀 KIRIM LANGSUNG KE SPREADSHEET RW 15';
-    }
-  }
-
-  function simpanKeLocalStorage(data) {
-    let antrean = JSON.parse(localStorage.getItem('PERELEK_OFFLINE_QUEUE') || '[]');
-    antrean.push(data);
-    localStorage.setItem('PERELEK_OFFLINE_QUEUE', JSON.stringify(antrean));
-    cekAntreanOffline();
-  }
-
-  function cekAntreanOffline() {
-    let antrean = JSON.parse(localStorage.getItem('PERELEK_OFFLINE_QUEUE') || '[]');
-    const infoBox = document.getElementById('infoAntrean');
-    if (antrean.length > 0) {
-      document.getElementById('jmlAntrean').innerText = antrean.length;
-      infoBox.classList.remove('d-none');
-    } else {
-      infoBox.classList.add('d-none');
-    }
-  }
-
-  async function sinkronkanDataOffline() {
-    let antrean = JSON.parse(localStorage.getItem('PERELEK_OFFLINE_QUEUE') || '[]');
-    if (antrean.length === 0) return;
-
-    tampilkanNotif('info', '🔄 Mengirim data offline ke Spreadsheet...');
-    let sisaAntrean = [];
-
-    for (let i = 0; i < antrean.length; i++) {
-      try {
-        const response = await fetch(GAS_EXEC_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'simpanSetoranPerelek', args: [antrean[i]] })
-        });
-        const result = await response.json();
-        if (result.status !== 'success') {
-          sisaAntrean.push(antrean[i]);
-        }
-      } catch (err) {
-        sisaAntrean.push(antrean[i]);
-      }
-    }
-
-    localStorage.setItem('PERELEK_OFFLINE_QUEUE', JSON.stringify(sisaAntrean));
-    cekAntreanOffline();
-
-    if (sisaAntrean.length === 0) {
-      tampilkanNotif('success', '🎉 Semua data offline berhasil terkirim ke Spreadsheet!');
-    } else {
-      tampilkanNotif('warning', '⚠️ Sebagian data gagal terkirim karena koneksi terputus.');
     }
   }
 
