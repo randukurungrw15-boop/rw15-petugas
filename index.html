@@ -180,13 +180,6 @@
 
 </div>
 
-<!-- Form Tersembunyi untuk Mengirim Data Langsung ke Google Apps Script Tanpa Blokir CORS -->
-<iframe name="hidden_iframe" id="hidden_iframe" style="display:none;"></iframe>
-<form id="myForm" action="https://script.google.com/macros/s/AKfycbwzp9NOWGeKRb5Dzx5Ujoh84Z6c-z1OxTPhphlXSekar6IkYBRgRp8R6qEJZfg63JKN7w/exec" method="POST" target="hidden_iframe" style="display:none;">
-  <input type="hidden" name="action" id="formAction">
-  <input type="hidden" name="payload" id="formPayload">
-</form>
-
 <script>
   const GAS_EXEC_URL = "https://script.google.com/macros/s/AKfycbwzp9NOWGeKRb5Dzx5Ujoh84Z6c-z1OxTPhphlXSekar6IkYBRgRp8R6qEJZfg63JKN7w/exec";
   const SHEET_URL_BASE = "https://docs.google.com/spreadsheets/d/" + "1dYr-lh2eCB9feuowBkEvzmf6XY8O0s5iRiAALDH8TI8";
@@ -548,8 +541,7 @@
     badge.className = antrean.length > 0 ? 'badge bg-warning text-dark' : 'badge bg-secondary';
   }
 
-  // UPLOAD MENGGUNAKAN FORM SUBMIT TERSEMBUNYI (100% TEMBUS & MASUK KE DATABASE SPREADSHEET)
-  function uploadDataKeSpreadsheet() {
+  async function uploadDataKeSpreadsheet() {
     let antrean = JSON.parse(localStorage.getItem('SETORAN_LOKAL_HP') || '[]');
     if (antrean.length === 0) {
       alert("Tidak ada data tersimpan di HP untuk di-upload.");
@@ -559,29 +551,39 @@
     if (!confirm(`Akan mengunggah ${antrean.length} data setoran ke Spreadsheet utama. Lanjutkan?`)) return;
 
     tampilkanNotifScanner('⏳ Mengunggah data ke Spreadsheet...', 'info');
+    let sisaAntrean = [];
 
-    // Kirim item pertama dalam antrean menggunakan form tersembunyi
-    const item = antrean[0];
-    document.getElementById('formAction').value = 'simpanSetoranPerelek';
-    document.getElementById('formPayload').value = JSON.stringify(item);
+    for (let i = 0; i < antrean.length; i++) {
+      try {
+        const payloadData = {
+          action: 'simpanSetoranPerelek',
+          args: [antrean[i]]
+        };
 
-    // Kirim form
-    document.getElementById('myForm').submit();
-
-    // Hapus data yang sudah terkirim dari antrean lokal HP
-    setTimeout(() => {
-      antrean.shift();
-      localStorage.setItem('SETORAN_LOKAL_HP', JSON.stringify(antrean));
-      updateStatusAntrean();
-
-      if (antrean.length > 0) {
-        // Jika masih ada sisa data, lanjut upload otomatis
-        uploadDataKeSpreadsheet();
-      } else {
-        tampilkanNotifScanner('🎉 Berhasil! Semua data telah di-upload dan masuk ke database Spreadsheet.', 'success');
-        muatUlangDatabase(false);
+        const response = await fetch(GAS_EXEC_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payloadData)
+        });
+        
+        const result = await response.json();
+        if (result.status !== 'success') {
+          sisaAntrean.push(antrean[i]);
+        }
+      } catch (err) {
+        sisaAntrean.push(antrean[i]);
       }
-    }, 1500);
+    }
+
+    localStorage.setItem('SETORAN_LOKAL_HP', JSON.stringify(sisaAntrean));
+    updateStatusAntrean();
+
+    if (sisaAntrean.length === 0) {
+      tampilkanNotifScanner('🎉 Berhasil! Semua data telah di-upload dan masuk ke spreadsheet.', 'success');
+      muatUlangDatabase(false);
+    } else {
+      tampilkanNotifScanner('⚠️ Sebagian data gagal di-upload. Periksa koneksi internet Anda.', 'danger');
+    }
   }
 
   function kirimRekapWhatsApp() {
