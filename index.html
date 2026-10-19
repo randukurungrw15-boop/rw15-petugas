@@ -10,7 +10,7 @@
     body { background-color: #f0f4f8; font-family: system-ui, -apple-system, sans-serif; }
     .app-container { max-width: 480px; margin: 0 auto; padding-bottom: 40px; }
     .card-custom { border: none; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
-    #reader { width: 100%; border-radius: 12px; overflow: hidden; border: 2px dashed #198754; background: #000; min-height: 250px; }
+    #reader { width: 100%; border-radius: 12px; overflow: hidden; border: 2px dashed #198754; background: #1e293b; min-height: 220px; }
     .btn-action { border-radius: 10px; font-weight: 600; padding: 10px 14px; }
   </style>
 </head>
@@ -35,7 +35,7 @@
       </div>
       <div id="loginMsg" class="alert alert-danger d-none py-2 small mb-3"></div>
       <div class="d-grid">
-        <button type="submit" class="btn btn-success btn-action">MASUK APLIKASI</button>
+        <button type="submit" id="btnLogin" class="btn btn-success btn-action">MASUK & SINKRONKAN OTOMATIS</button>
       </div>
     </form>
   </div>
@@ -51,11 +51,11 @@
       <small class="opacity-75">Penarikan Khusus Hari Sabtu</small>
     </div>
 
-    <!-- Panel Wajib Sinkronisasi & Upload -->
-    <div class="card card-custom p-3 mb-3 border-danger">
+    <!-- Panel Status & Upload -->
+    <div class="card card-custom p-3 mb-3">
       <div class="d-flex justify-content-between align-items-center mb-1">
-        <span class="small fw-bold text-danger">STATUS SINKRONISASI</span>
-        <span id="statusSinkronBadge" class="badge bg-danger">Belum Disinkronkan</span>
+        <span class="small fw-bold text-secondary">DATABASE WARGA</span>
+        <span id="statusSinkronBadge" class="badge bg-success">Siap Digunakan</span>
       </div>
       <div class="d-flex justify-content-between align-items-center mb-2">
         <span class="small fw-bold text-secondary">DATA TERSIMPAN DI HP</span>
@@ -69,9 +69,6 @@
       </div>
 
       <div class="d-grid gap-2 mt-2">
-        <button type="button" id="btnSinkron" class="btn btn-warning btn-sm fw-bold text-dark" onclick="muatUlangDatabase()">
-          🔄 1. Wajib Klik: Sinkron KK & Status Lunas
-        </button>
         <button type="button" class="btn btn-primary btn-sm fw-bold" onclick="uploadDataKeSpreadsheet()">
           ☁️ Upload Data ke Spreadsheet (Update Keuangan Otomatis)
         </button>
@@ -81,22 +78,35 @@
       </div>
     </div>
 
-    <!-- Kamera Scanner QR -->
+    <!-- Kamera Scanner QR (Stand-by / Hemat Baterai) -->
     <div class="card card-custom p-3 mb-3">
       <div class="d-flex justify-content-between align-items-center mb-2">
         <span class="small fw-bold text-success">1. SCAN QR RUMAH WARGA</span>
-        <button type="button" class="btn btn-sm btn-outline-primary py-0" id="btnScanUlang" onclick="mulaiScanUlang()" disabled>📷 Scan Lagi</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary py-0" onclick="muatUlangDatabase(true)">🔄 Perbarui Data</button>
+      </div>
+
+      <!-- Tombol Buka/Tutup Kamera Manual -->
+      <div class="d-grid gap-2 mb-2">
+        <button type="button" id="btnBukaKamera" class="btn btn-primary btn-action" onclick="mulaiScanManual()">
+          📷 BUKA KAMERA SCAN QR
+        </button>
+        <button type="button" id="btnTutupKamera" class="btn btn-danger btn-sm d-none" onclick="hentikanKameraManual()">
+          ⏹️ Matikan Kamera (Hemat Baterai)
+        </button>
       </div>
       
       <div id="reader" class="mb-3 d-flex align-items-center justify-content-center text-white text-center p-3">
-        <span id="infoKameraStatus" class="small text-warning">⚠️ Klik tombol [Sinkron KK & Status Lunas] di atas terlebih dahulu sebelum melakukan scan!</span>
+        <div id="placeholderKamera">
+          <div style="font-size: 36px;">📷</div>
+          <small class="text-light opacity-75">Kamera sedang nonaktif untuk menghemat baterai.<br>Klik tombol <b>Buka Kamera Scan QR</b> saat tiba di rumah warga.</small>
+        </div>
       </div>
 
       <!-- Kotak Notifikasi Hasil Scan / Penolakan Ganda -->
       <div id="pesanNotifScanner" class="alert d-none py-2 px-3 small mb-2 fw-bold text-center"></div>
 
       <label class="form-label small fw-semibold mb-1">Atau Cari Manual Kepala Keluarga / Kode QR:</label>
-      <input class="form-control form-control-sm mb-2" list="datalistKK" id="cariManualInput" placeholder="Sinkronkan data terlebih dahulu..." disabled onchange="pilihDariPencarian()">
+      <input class="form-control form-control-sm mb-2" list="datalistKK" id="cariManualInput" placeholder="Ketik nama warga atau PRK-RT..." onchange="pilihDariPencarian()">
       <datalist id="datalistKK"></datalist>
     </div>
 
@@ -163,7 +173,7 @@
 
         <div class="d-grid">
           <button type="submit" id="btnSimpanLokal" class="btn btn-success btn-action" disabled>
-            💾 SIMPAN KE HP (LANJUT SCAN BERIKUTNYA)
+            💾 SIMPAN KE HP
           </button>
         </div>
       </form>
@@ -174,24 +184,23 @@
 
 <script>
   const GAS_EXEC_URL = "https://script.google.com/macros/s/AKfycbwzp9NOWGeKRb5Dzx5Ujoh84Z6c-z1OxTPhphlXSekar6IkYBRgRp8R6qEJZfg63JKN7w/exec";
-  const SHEET_ID = "1dYr-lh2eCB9feuowBkEvzmf6XY8O0s5iRiAALDH8TI8";
+  const SHEET_URL_BASE = "https://docs.google.com/spreadsheets/d/" + "1dYr-lh2eCB9feuowBkEvzmf6XY8O0s5iRiAALDH8TI8";
 
   let daftarKK = [];
   let riwayatPerelek = [];
   let petugasAktif = "";
   let html5QrCode = null;
-  let sudahDisinkronkan = false;
 
   window.addEventListener('DOMContentLoaded', () => {
-    // Set default ke hari Sabtu terdekat
     const today = new Date();
     const diffToSat = (6 - today.getDay() + 7) % 7;
     today.setDate(today.getDate() + diffToSat);
     document.getElementById('sabtuMulai').value = formatYYYYMMDD(today);
 
-    const savedLogin = sessionStorage.getItem('PETUGAS_AKTIF');
+    const savedLogin = localStorage.getItem('PETUGAS_AKTIF') || sessionStorage.getItem('PETUGAS_AKTIF');
     if (savedLogin) {
       petugasAktif = savedLogin;
+      localStorage.setItem('PETUGAS_AKTIF', petugasAktif);
       bukaLayarUtama();
     }
     updateStatusAntrean();
@@ -204,7 +213,6 @@
     return `${y}-${m}-${day}`;
   }
 
-  // Pastikan tanggal yang dipilih selalu jatuh pada hari Sabtu
   function pastikanHariSabtu() {
     const input = document.getElementById('sabtuMulai');
     if (!input.value) return;
@@ -212,7 +220,6 @@
     const dt = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
     const day = dt.getDay();
     if (day !== 6) {
-      // Geser ke Sabtu terdekat
       const diff = day === 5 ? 1 : (6 - day + 7) % 7;
       dt.setDate(dt.getDate() + diff);
       input.value = formatYYYYMMDD(dt);
@@ -221,9 +228,8 @@
       document.getElementById('infoSabtu').innerText = `✅ Periode Hari Sabtu: ${input.value}`;
     }
 
-    // Jika sudah ada kode QR yang tampil, langsung cek ulang status lunasnya
     const qrSekarang = document.getElementById('qrCode').value;
-    if (qrSekarang && sudahDisinkronkan) {
+    if (qrSekarang) {
       prosesKodeQR(qrSekarang);
     }
   }
@@ -233,7 +239,10 @@
     const u = document.getElementById('inputUser').value.trim();
     const p = document.getElementById('inputPass').value.trim();
     const msgBox = document.getElementById('loginMsg');
+    const btnLogin = document.getElementById('btnLogin');
     msgBox.classList.add('d-none');
+    btnLogin.disabled = true;
+    btnLogin.innerText = "⏳ MEMVERIFIKASI & SINKRONISASI...";
 
     try {
       const res = await fetch(GAS_EXEC_URL, {
@@ -245,7 +254,7 @@
 
       if (json.status === 'success' && json.data && json.data.success) {
         petugasAktif = json.data.user.nama || u;
-        sessionStorage.setItem('PETUGAS_AKTIF', petugasAktif);
+        localStorage.setItem('PETUGAS_AKTIF', petugasAktif);
         bukaLayarUtama();
       } else {
         throw new Error(json.data ? json.data.message : 'Login gagal');
@@ -253,6 +262,9 @@
     } catch (err) {
       msgBox.innerText = "❌ " + (err.message || "Nama petugas atau password salah!");
       msgBox.classList.remove('d-none');
+    } finally {
+      btnLogin.disabled = false;
+      btnLogin.innerText = "MASUK & SINKRONKAN OTOMATIS";
     }
   }
 
@@ -261,29 +273,36 @@
     document.getElementById('layarApp').classList.remove('d-none');
     document.getElementById('infoPetugasLogin').innerText = "Petugas: " + petugasAktif;
 
-    // Muat cache dari HP jika ada (untuk berjaga-jaga saat offline)
+    // 1. Muat data tersimpan dari memori HP
     const cacheKK = localStorage.getItem('CACHE_DAFTAR_KK');
     const cachePerelek = localStorage.getItem('CACHE_RIWAYAT_PERELEK');
-    if (cacheKK && cachePerelek) {
+    if (cacheKK) {
       daftarKK = JSON.parse(cacheKK);
-      riwayatPerelek = JSON.parse(cachePerelek);
+      riwayatPerelek = cachePerelek ? JSON.parse(cachePerelek) : [];
       isiDatalistKK();
+      const badge = document.getElementById('statusSinkronBadge');
+      badge.className = 'badge bg-success';
+      badge.innerText = `✅ Siap (${daftarKK.length} KK • ${riwayatPerelek.length} Setoran)`;
     }
+
+    // 2. Sinkronisasi otomatis di latar belakang tanpa menyalakan kamera
+    muatUlangDatabase(false);
   }
 
   function logoutApp() {
+    localStorage.removeItem('PETUGAS_AKTIF');
     sessionStorage.removeItem('PETUGAS_AKTIF');
     location.reload();
   }
 
-  // SINKRONISASI DATA KK & SHEET PERELEK DARI SPREADSHEET MASTER
-  async function muatUlangDatabase() {
+  async function muatUlangDatabase(tampilkanPesanManual) {
     const badge = document.getElementById('statusSinkronBadge');
-    badge.className = 'badge bg-warning text-dark';
-    badge.innerText = 'Menyinkronkan...';
+    if (tampilkanPesanManual || daftarKK.length === 0) {
+      badge.className = 'badge bg-warning text-dark';
+      badge.innerText = 'Menyinkronkan...';
+    }
 
     try {
-      // 1. Ambil data dari Apps Script
       const res = await fetch(GAS_EXEC_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -294,13 +313,10 @@
       if (json.status === 'success' && json.data) {
         const db = json.data.dashboard || json.data;
         daftarKK = db.kkList || db.dataKK || [];
-        
-        // Coba ekstrak riwayat perelek dari berbagai kemungkinan properti Apps Script
         let rawPerelek = db.perelek || db.perelekList || db.riwayatPerelek || db.riwayatBayar || db.setoranList || [];
         
-        // 2. Fallback langsung tarik data terupdate dari Sheet "Perelek" & "Data_KK" jika Apps Script tidak mengirim array perelek lengkap
         try {
-          const gvizRes = await fetch(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Perelek`);
+          const gvizRes = await fetch(`${SHEET_URL_BASE}/gviz/tq?tqx=out:json&sheet=Perelek`);
           const gvizText = await gvizRes.text();
           const jsonStr = gvizText.substring(gvizText.indexOf('{'), gvizText.lastIndexOf('}') + 1);
           const gvizData = JSON.parse(jsonStr);
@@ -321,44 +337,30 @@
             }).filter(item => item.qr && item.qr !== 'QR_KK');
           }
         } catch (eGviz) {
-          console.log("Menggunakan data perelek dari Apps Script");
+          console.log("Menggunakan riwayat dari Apps Script");
         }
 
         riwayatPerelek = rawPerelek;
 
-        // Simpan ke memori HP agar saat offline di gang tetap bisa mendeteksi yang sudah lunas
         localStorage.setItem('CACHE_DAFTAR_KK', JSON.stringify(daftarKK));
         localStorage.setItem('CACHE_RIWAYAT_PERELEK', JSON.stringify(riwayatPerelek));
 
         isiDatalistKK();
 
-        sudahDisinkronkan = true;
         badge.className = 'badge bg-success';
         badge.innerText = `✅ Tersinkron (${daftarKK.length} KK • ${riwayatPerelek.length} Setoran)`;
         
-        document.getElementById('cariManualInput').disabled = false;
-        document.getElementById('cariManualInput').placeholder = 'Ketik nama warga atau PRK-RT...';
-        document.getElementById('btnScanUlang').disabled = false;
-        
-        tampilkanNotifScanner('✨ Sinkronisasi Berhasil! Data KK yang sudah lunas telah dimuat.', 'success');
-        inisialisasiScanner();
-      } else {
-        throw new Error('Respons server tidak valid');
+        if (tampilkanPesanManual) {
+          tampilkanNotifScanner('✨ Data KK & Status Lunas berhasil diperbarui!', 'success');
+        }
       }
     } catch (err) {
-      // Jika gagal karena tidak ada sinyal, cek apakah ada cache di HP
       if (daftarKK.length > 0) {
-        sudahDisinkronkan = true;
-        badge.className = 'badge bg-warning text-dark';
-        badge.innerText = `⚠️ Mode Offline (${daftarKK.length} KK dari Memori HP)`;
-        document.getElementById('cariManualInput').disabled = false;
-        document.getElementById('btnScanUlang').disabled = false;
-        tampilkanNotifScanner('⚠️ Menggunakan data sinkronisasi terakhir dari memori HP.', 'warning');
-        inisialisasiScanner();
+        badge.className = 'badge bg-secondary';
+        badge.innerText = `💾 Mode Offline (${daftarKK.length} KK Tersimpan)`;
       } else {
         badge.className = 'badge bg-danger';
         badge.innerText = 'Gagal Sinkron (Cek Internet)';
-        alert("❌ Gagal menyinkronkan data. Pastikan HP terhubung ke internet!");
       }
     }
   }
@@ -374,36 +376,22 @@
     });
   }
 
-  function inisialisasiScanner() {
-    if (!sudahDisinkronkan) return;
-    if (!html5QrCode) {
-      document.getElementById('reader').innerHTML = '';
-      html5QrCode = new Html5Qrcode("reader");
-    }
-    mulaiScanUlang();
-  }
+  // KAMERA HANYA MENYALA SAAT TOMBOL DITEKAN
+  function mulaiScanManual() {
+    document.getElementById('reader').innerHTML = '';
+    html5QrCode = new Html5Qrcode("reader");
 
-  function mulaiScanUlang() {
-    if (!sudahDisinkronkan) {
-      tampilkanNotifScanner('⚠️ Harap klik tombol [Sinkron KK & Status Lunas] terlebih dahulu!', 'danger');
-      return;
-    }
-    if (!html5QrCode) {
-      document.getElementById('reader').innerHTML = '';
-      html5QrCode = new Html5Qrcode("reader");
-    }
-    
+    document.getElementById('btnBukaKamera').classList.add('d-none');
+    document.getElementById('btnTutupKamera').classList.remove('d-none');
+
     const config = { fps: 10, qrbox: { width: 220, height: 220 } };
     
     html5QrCode.start(
       { facingMode: "environment" },
       config,
       (decodedText) => {
-        html5QrCode.stop().then(() => {
-          prosesKodeQR(decodedText);
-        }).catch(() => {
-          prosesKodeQR(decodedText);
-        });
+        hentikanKameraManual();
+        prosesKodeQR(decodedText);
       },
       () => {}
     ).catch(() => {
@@ -411,36 +399,47 @@
         { facingMode: "user" },
         config,
         (decodedText) => {
-          html5QrCode.stop().then(() => {
-            prosesKodeQR(decodedText);
-          }).catch(() => {
-            prosesKodeQR(decodedText);
-          });
+          hentikanKameraManual();
+          prosesKodeQR(decodedText);
         },
         () => {}
       );
     });
   }
 
-  function pilihDariPencarian() {
-    if (!sudahDisinkronkan) {
-      alert("⚠️ Harap sinkronkan data terlebih dahulu!");
-      return;
+  function hentikanKameraManual() {
+    if (html5QrCode && html5QrCode.isScanning) {
+      html5QrCode.stop().then(() => {
+        tampilkanPlaceholderKamera();
+      }).catch(() => {
+        tampilkanPlaceholderKamera();
+      });
+    } else {
+      tampilkanPlaceholderKamera();
     }
+  }
+
+  function tampilkanPlaceholderKamera() {
+    document.getElementById('btnBukaKamera').classList.remove('d-none');
+    document.getElementById('btnTutupKamera').classList.add('d-none');
+    document.getElementById('reader').innerHTML = `
+      <div id="placeholderKamera" class="p-3 text-center text-white">
+        <div style="font-size: 36px;">📷</div>
+        <small class="text-light opacity-75">Kamera dimatikan untuk menghemat baterai.<br>Klik <b>Buka Kamera Scan QR</b> saat tiba di rumah berikutnya.</small>
+      </div>`;
+  }
+
+  function pilihDariPencarian() {
     const val = document.getElementById('cariManualInput').value.trim();
     if (val) {
-      if (html5QrCode && html5QrCode.isScanning) {
-        html5QrCode.stop().catch(() => {});
-      }
+      hentikanKameraManual();
       prosesKodeQR(val);
     }
   }
 
-  // FUNGSI CEK APAKAH TANGGAL SABTU TARGET MASUK DALAM CAKUPAN MINGGU LUNAS
   function apakahTanggalTertutupLunas(sabtuMulaiStr, jumlahMinggu, sabtuTargetStr) {
     if (!sabtuMulaiStr || !sabtuTargetStr) return false;
     
-    // Normalisasi string tanggal ke YYYY-MM-DD
     let cleanMulai = String(sabtuMulaiStr).trim().substring(0, 10);
     if (cleanMulai.includes('/')) {
       const p = cleanMulai.split('/');
@@ -453,7 +452,6 @@
     const jmlMg = Math.max(1, Number(jumlahMinggu || 1));
     const dtMulai = new Date(Number(pMulai[0]), Number(pMulai[1]) - 1, Number(pMulai[2]));
 
-    // Periksa setiap Sabtu selama 'jmlMg' minggu ke depan
     for (let i = 0; i < jmlMg; i++) {
       const dtCek = new Date(dtMulai);
       dtCek.setDate(dtCek.getDate() + (i * 7));
@@ -465,21 +463,15 @@
   }
 
   function prosesKodeQR(inputStr) {
-    if (!sudahDisinkronkan) {
-      tampilkanNotifScanner('❌ DITOLAK: Harap sinkronkan aplikasi terlebih dahulu!', 'danger');
-      return;
-    }
-
     pastikanHariSabtu();
     const bersih = String(inputStr).trim().toUpperCase();
     const cocok = daftarKK.find(k => String(k.qr).trim().toUpperCase() === bersih || String(k.nama).trim().toUpperCase() === bersih);
 
     if (cocok) {
-      const sabtuTarget = document.getElementById('sabtuMulai').value; // YYYY-MM-DD
+      const sabtuTarget = document.getElementById('sabtuMulai').value;
       const qrWarga = String(cocok.qr).trim().toUpperCase();
       const namaWarga = String(cocok.nama).trim().toUpperCase();
 
-      // 1. Cek di data Sheet Perelek (termasuk pembayaran rapel beberapa minggu seperti Teh Lia 4 Minggu)
       const sudahLunasServer = riwayatPerelek.some(r => {
         const rQr = String(r.qr || r.qrCode || r.QR_KK || '').trim().toUpperCase();
         const rNama = String(r.nama || r.kepalaKeluarga || r['Kepala Keluarga'] || '').trim().toUpperCase();
@@ -492,7 +484,6 @@
         return apakahTanggalTertutupLunas(rSabtuMulai, rMinggu, sabtuTarget);
       });
 
-      // 2. Cek juga di antrean lokal HP yang belum di-upload
       let antreanLokal = JSON.parse(localStorage.getItem('SETORAN_LOKAL_HP') || '[]');
       const sudahLunasLokal = antreanLokal.some(r => {
         const cocokLokal = (String(r.qrCode).trim().toUpperCase() === qrWarga || String(r.kepalaKeluarga).trim().toUpperCase() === namaWarga);
@@ -507,7 +498,6 @@
       document.getElementById('rtKK').value = cocok.rt;
 
       if (sudahLunasServer || sudahLunasLokal) {
-        // KUNCI TOMBOL SIMPAN & TAMPILKAN PERINGATAN MERAH
         document.getElementById('btnSimpanLokal').disabled = true;
         tampilkanNotifScanner(`❌ DITOLAK: KK ${cocok.nama} sudah lunas pada periode Sabtu ini!`, 'danger');
       } else {
@@ -547,7 +537,7 @@
     antrean.push(formPayload);
     localStorage.setItem('SETORAN_LOKAL_HP', JSON.stringify(antrean));
 
-    tampilkanNotifScanner(`💾 Setoran KK ${formPayload.kepalaKeluarga} tersimpan di HP! Klik [Scan Lagi] untuk lanjut.`, 'success');
+    tampilkanNotifScanner(`💾 Setoran KK ${formPayload.kepalaKeluarga} tersimpan di HP!`, 'success');
     updateStatusAntrean();
     resetForm();
   }
@@ -592,7 +582,7 @@
 
     if (sisaAntrean.length === 0) {
       tampilkanNotifScanner('🎉 Berhasil! Semua data telah di-upload dan laporan keuangan ter-update otomatis.', 'success');
-      muatUlangDatabase();
+      muatUlangDatabase(false);
     } else {
       tampilkanNotifScanner('⚠️ Sebagian data gagal di-upload karena koneksi terputus.', 'danger');
     }
@@ -636,6 +626,7 @@
     document.getElementById('kepalaKeluarga').value = '';
     document.getElementById('rtKK').value = '';
     document.getElementById('btnSimpanLokal').disabled = true;
+    document.getElementById('cariManualInput').value = '';
   }
 
   function tampilkanNotifScanner(pesan, tipe) {
