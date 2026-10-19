@@ -10,7 +10,7 @@
     body { background-color: #f0f4f8; font-family: system-ui, -apple-system, sans-serif; }
     .app-container { max-width: 480px; margin: 0 auto; padding-bottom: 40px; }
     .card-custom { border: none; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
-    #reader { width: 100%; border-radius: 12px; overflow: hidden; border: 2px dashed #198754; background: #000; }
+    #reader { width: 100%; border-radius: 12px; overflow: hidden; border: 2px dashed #198754; background: #000; min-height: 250px; }
     .btn-action { border-radius: 10px; font-weight: 600; padding: 10px 14px; }
   </style>
 </head>
@@ -18,7 +18,7 @@
 
 <div class="container py-3 app-container">
 
-  <!-- ================= LAYAR LOGIN PETUGAS ================= -->
+  <!-- LAYAR LOGIN PETUGAS -->
   <div id="layarLogin" class="card card-custom p-4 mt-5">
     <div class="text-center mb-4">
       <h4 class="fw-bold text-success">LOGIN PETUGAS PERELEK</h4>
@@ -38,14 +38,10 @@
         <button type="submit" class="btn btn-success btn-action">MASUK APLIKASI</button>
       </div>
     </form>
-    <div class="text-center mt-3">
-      <small class="text-muted">Aplikasi ini khusus petugas resmi RW 15.</small>
-    </div>
   </div>
 
-  <!-- ================= APLIKASI UTAMA (DISEMBUNYIKAN SEBELUM LOGIN) ================= -->
+  <!-- APLIKASI UTAMA -->
   <div id="layarApp" class="d-none">
-    <!-- Header Aplikasi -->
     <div class="card card-custom p-3 mb-3 bg-success text-white text-center">
       <div class="d-flex justify-content-between align-items-center">
         <small id="infoPetugasLogin" class="fw-bold">Petugas: -</small>
@@ -55,11 +51,14 @@
       <small class="opacity-75">Scan QR & Input Cepat</small>
     </div>
 
-    <!-- Status Database & Tanggal -->
+    <!-- Status & Info Antrean Offline -->
     <div class="card card-custom p-3 mb-3">
       <div class="d-flex justify-content-between align-items-center mb-2">
-        <span class="small fw-bold text-secondary">STATUS DATABASE</span>
-        <span id="statusKoneksi" class="badge bg-warning text-dark">Memuat Data KK...</span>
+        <span class="small fw-bold text-secondary">STATUS KONEKSI</span>
+        <span id="statusKoneksi" class="badge bg-warning text-dark">Memeriksa...</span>
+      </div>
+      <div id="infoAntrean" class="alert alert-warning py-1 px-2 small mb-2 d-none">
+        ⚠️ Ada <span id="jmlAntrean">0</span> data offline di HP. <button class="btn btn-sm btn-dark py-0 ms-1" onclick="sinkronkanDataOffline()">Kirim Sekarang</button>
       </div>
       <div class="row g-2">
         <div class="col-12">
@@ -73,7 +72,10 @@
     <div class="card card-custom p-3 mb-3">
       <div class="d-flex justify-content-between align-items-center mb-2">
         <span class="small fw-bold text-success">1. SCAN QR RUMAH WARGA</span>
-        <button type="button" class="btn btn-sm btn-outline-secondary py-0" onclick="muatUlangDatabase()">🔄 Sinkron KK</button>
+        <div>
+          <button type="button" class="btn btn-sm btn-outline-primary py-0 me-1" onclick="mulaiScanUlang()">📷 Scan Lagi</button>
+          <button type="button" class="btn btn-sm btn-outline-secondary py-0" onclick="muatUlangDatabase()">🔄 Sinkron KK</button>
+        </div>
       </div>
       
       <div id="reader" class="mb-3"></div>
@@ -83,7 +85,7 @@
       <datalist id="datalistKK"></datalist>
     </div>
 
-    <!-- Form Input Setoran Perelek -->
+    <!-- Form Input Setoran -->
     <div class="card card-custom p-3">
       <span class="small fw-bold text-success d-block mb-2">2. DATA SETORAN PERELEK</span>
 
@@ -106,7 +108,6 @@
           </div>
         </div>
 
-        <!-- Pilihan Jenis Setoran -->
         <div class="mb-2">
           <label class="form-label small fw-semibold mb-1">Jenis Setoran</label>
           <div class="btn-group w-100" role="group">
@@ -118,7 +119,6 @@
           </div>
         </div>
 
-        <!-- Input Uang -->
         <div id="blokUang" class="mb-3">
           <label class="form-label small fw-semibold mb-1">Nominal Uang (Rp)</label>
           <div class="d-flex gap-1 mb-2 flex-wrap">
@@ -130,7 +130,6 @@
           <input type="number" id="nominalUang" class="form-control" value="5000" min="0" step="500">
         </div>
 
-        <!-- Input Beras -->
         <div id="blokBeras" class="mb-3 d-none">
           <div class="row g-2">
             <div class="col-7">
@@ -147,10 +146,8 @@
           </div>
         </div>
 
-        <!-- Pesan Notifikasi Hasil -->
         <div id="pesanNotif" class="alert d-none py-2 px-3 small mb-3"></div>
 
-        <!-- Tombol Kirim Langsung -->
         <div class="d-grid">
           <button type="submit" id="btnKirimGAS" class="btn btn-success btn-action" disabled>
             🚀 KIRIM LANGSUNG KE SPREADSHEET RW 15
@@ -166,14 +163,15 @@
   const GAS_EXEC_URL = "https://script.google.com/macros/s/AKfycbwzp9NOWGeKRb5Dzx5Ujoh84Z6c-z1OxTPhphlXSekar6IkYBRgRp8R6qEJZfg63JKN7w/exec";
   let daftarKK = [];
   let petugasAktif = "";
+  let html5QrCode = null;
 
   window.addEventListener('DOMContentLoaded', () => {
-    // Cek apakah sudah login sebelumnya di sesi ini
     const savedLogin = sessionStorage.getItem('PETUGAS_AKTIF');
     if (savedLogin) {
       petugasAktif = savedLogin;
       tampilkanHalamanApp();
     }
+    cekAntreanOffline();
 
     const today = new Date();
     const diffToSat = (6 - today.getDay() + 7) % 7;
@@ -181,7 +179,6 @@
     document.getElementById('sabtuMulai').value = today.toISOString().split('T')[0];
   });
 
-  // Fungsi Login Petugas mencocokkan ke database Apps Script
   async function prosesLogin(e) {
     e.preventDefault();
     const u = document.getElementById('inputUser').value.trim();
@@ -215,7 +212,7 @@
     document.getElementById('layarApp').classList.remove('d-none');
     document.getElementById('infoPetugasLogin').innerText = "Petugas: " + petugasAktif;
     muatUlangDatabase();
-    jalankanScannerQR();
+    inisialisasiScanner();
   }
 
   function logoutApp() {
@@ -251,21 +248,65 @@
       }
     } catch (err) {
       badge.className = 'badge bg-danger';
-      badge.innerText = 'Gagal Muat Data';
+      badge.innerText = 'Mode Offline';
     }
   }
 
-  let scannerTerpasang = false;
-  function jalankanScannerQR() {
-    if (scannerTerpasang) return;
-    const scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 220, height: 220 } });
-    scanner.render((decodedText) => { prosesKodeQR(decodedText); });
-    scannerTerpasang = true;
+  // INISIALISASI KAMERA BELAKANG & BERHENTI OTOMATIS SAAT KODE TERBACA
+  function inisialisasiScanner() {
+    if (!html5QrCode) {
+      html5QrCode = new Html5Qrcode("reader");
+    }
+    mulaiScanUlang();
+  }
+
+  function mulaiScanUlang() {
+    if (!html5QrCode) {
+      html5QrCode = new Html5Qrcode("reader");
+    }
+    
+    const config = { fps: 10, qrbox: { width: 220, height: 220 } };
+    
+    // Coba langsung kunci ke kamera belakang (environment)
+    html5QrCode.start(
+      { facingMode: "environment" },
+      config,
+      (decodedText) => {
+        // KETIKA QR BERHASIL TERBACA, HENTIKAN KAMERA OTOMATIS
+        html5QrCode.stop().then(() => {
+          prosesKodeQR(decodedText);
+        }).catch((err) => {
+          prosesKodeQR(decodedText);
+        });
+      },
+      (errorMessage) => {
+        // Mengabaikan error saat proses pencarian frame QR berlangsung
+      }
+    ).catch((err) => {
+      // Fallback jika facingMode environment gagal, gunakan kamera default apa saja
+      html5QrCode.start(
+        { facingMode: "user" },
+        config,
+        (decodedText) => {
+          html5QrCode.stop().then(() => {
+            prosesKodeQR(decodedText);
+          }).catch(() => {
+            prosesKodeQR(decodedText);
+          });
+        },
+        () => {}
+      );
+    });
   }
 
   function pilihDariPencarian() {
     const val = document.getElementById('cariManualInput').value.trim();
-    if (val) prosesKodeQR(val);
+    if (val) {
+      if (html5QrCode && html5QrCode.isScanning) {
+        html5QrCode.stop().catch(() => {});
+      }
+      prosesKodeQR(val);
+    }
   }
 
   function prosesKodeQR(inputStr) {
@@ -278,7 +319,7 @@
       document.getElementById('kepalaKeluarga').value = cocok.nama;
       document.getElementById('rtKK').value = cocok.rt;
       document.getElementById('btnKirimGAS').disabled = false;
-      tampilkanNotif('success', '✅ Warga ditemukan: ' + cocok.nama);
+      tampilkanNotif('success', '✅ Warga ditemukan: ' + cocok.nama + ' (Kamera berhenti)');
     } else {
       tampilkanNotif('danger', '❌ Kode QR / Warga tidak ditemukan!');
     }
@@ -319,20 +360,76 @@
       const result = await response.json();
 
       if (result.status === 'success') {
-        tampilkanNotif('success', '🎉 Berhasil disimpan ke Spreadsheet!');
-        document.getElementById('qrCode').value = '';
-        document.getElementById('kepalaKeluarga').value = '';
-        document.getElementById('rtKK').value = '';
-        btn.disabled = true;
+        tampilkanNotif('success', '🎉 Berhasil dikirim ke Spreadsheet!');
+        resetForm();
       } else {
         throw new Error(result.message);
       }
     } catch (err) {
-      tampilkanNotif('danger', '⚠️ ' + err.message);
-      btn.disabled = false;
+      simpanKeLocalStorage(formPayload);
+      tampilkanNotif('warning', '⚠️ HP Offline! Data disimpan di memori HP. Akan terkirim otomatis saat ada internet.');
+      resetForm();
     } finally {
       btn.innerText = '🚀 KIRIM LANGSUNG KE SPREADSHEET RW 15';
     }
+  }
+
+  function simpanKeLocalStorage(data) {
+    let antrean = JSON.parse(localStorage.getItem('PERELEK_OFFLINE_QUEUE') || '[]');
+    antrean.push(data);
+    localStorage.setItem('PERELEK_OFFLINE_QUEUE', JSON.stringify(antrean));
+    cekAntreanOffline();
+  }
+
+  function cekAntreanOffline() {
+    let antrean = JSON.parse(localStorage.getItem('PERELEK_OFFLINE_QUEUE') || '[]');
+    const infoBox = document.getElementById('infoAntrean');
+    if (antrean.length > 0) {
+      document.getElementById('jmlAntrean').innerText = antrean.length;
+      infoBox.classList.remove('d-none');
+    } else {
+      infoBox.classList.add('d-none');
+    }
+  }
+
+  async function sinkronkanDataOffline() {
+    let antrean = JSON.parse(localStorage.getItem('PERELEK_OFFLINE_QUEUE') || '[]');
+    if (antrean.length === 0) return;
+
+    tampilkanNotif('info', '🔄 Mengirim data offline ke Spreadsheet...');
+    let sisaAntrean = [];
+
+    for (let i = 0; i < antrean.length; i++) {
+      try {
+        const response = await fetch(GAS_EXEC_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'simpanSetoranPerelek', args: [antrean[i]] })
+        });
+        const result = await response.json();
+        if (result.status !== 'success') {
+          sisaAntrean.push(antrean[i]);
+        }
+      } catch (err) {
+        sisaAntrean.push(antrean[i]);
+      }
+    }
+
+    localStorage.setItem('PERELEK_OFFLINE_QUEUE', JSON.stringify(sisaAntrean));
+    cekAntreanOffline();
+
+    if (sisaAntrean.length === 0) {
+      tampilkanNotif('success', '🎉 Semua data offline berhasil terkirim ke Spreadsheet!');
+    } else {
+      tampilkanNotif('warning', '⚠️ Sebagian data gagal terkirim karena koneksi terputus.');
+    }
+  }
+
+  function resetForm() {
+    document.getElementById('qrCode').value = '';
+    document.getElementById('kepalaKeluarga').value = '';
+    document.getElementById('rtKK').value = '';
+    document.getElementById('btnKirimGAS').disabled = true;
   }
 
   function tampilkanNotif(tipe, pesan) {
