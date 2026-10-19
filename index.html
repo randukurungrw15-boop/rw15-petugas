@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <title>Petugas Perelek - RW 15 Digital</title>
+  <title>Login Petugas - RW 15 Digital</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
@@ -17,135 +17,211 @@
 <body>
 
 <div class="container py-3 app-container">
-  <!-- Header Aplikasi -->
-  <div class="card card-custom p-3 mb-3 bg-success text-white text-center">
-    <h5 class="fw-bold mb-0">PETUGAS PERELEK RW 15</h5>
-    <small class="opacity-75">Kampung Randukurung • Scan QR & Input Cepat</small>
-  </div>
 
-  <!-- Pengaturan Nama Petugas & Status Koneksi -->
-  <div class="card card-custom p-3 mb-3">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <span class="small fw-bold text-secondary">STATUS DATABASE</span>
-      <span id="statusKoneksi" class="badge bg-warning text-dark">Memuat Data KK...</span>
+  <!-- ================= LAYAR LOGIN PETUGAS ================= -->
+  <div id="layarLogin" class="card card-custom p-4 mt-5">
+    <div class="text-center mb-4">
+      <h4 class="fw-bold text-success">LOGIN PETUGAS PERELEK</h4>
+      <p class="text-muted small">Kampung Randukurung RW 15</p>
     </div>
-    <div class="row g-2">
-      <div class="col-7">
-        <label class="form-label small fw-semibold mb-1">Nama Petugas Penarik</label>
-        <input type="text" id="petugas" class="form-control form-control-sm" value="Dandi Supriatna" required>
+    <form onsubmit="prosesLogin(event)">
+      <div class="mb-3">
+        <label class="form-label small fw-semibold">Nama Petugas / Username</label>
+        <input type="text" id="inputUser" class="form-control" placeholder="Contoh: Dandi Supriatna" required>
       </div>
-      <div class="col-5">
-        <label class="form-label small fw-semibold mb-1">Sabtu Mulai</label>
-        <input type="date" id="sabtuMulai" class="form-control form-control-sm" required>
+      <div class="mb-3">
+        <label class="form-label small fw-semibold">PIN / Password Petugas</label>
+        <input type="password" id="inputPass" class="form-control" placeholder="Masukkan PIN rahasia" required>
       </div>
-    </div>
-  </div>
-
-  <!-- Kamera Scanner QR -->
-  <div class="card card-custom p-3 mb-3">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <span class="small fw-bold text-success">1. SCAN QR RUMAH WARGA</span>
-      <button type="button" class="btn btn-sm btn-outline-secondary py-0" onclick="muatUlangDatabase()">🔄 Sinkron KK</button>
-    </div>
-    
-    <div id="reader" class="mb-3"></div>
-
-    <label class="form-label small fw-semibold mb-1">Atau Cari Manual Kepala Keluarga / Kode QR:</label>
-    <input class="form-control form-control-sm mb-2" list="datalistKK" id="cariManualInput" placeholder="Ketik nama warga atau PRK-RT..." onchange="pilihDariPencarian()">
-    <datalist id="datalistKK"></datalist>
-  </div>
-
-  <!-- Form Input Setoran Perelek -->
-  <div class="card card-custom p-3">
-    <span class="small fw-bold text-success d-block mb-2">2. DATA SETORAN PERELEK</span>
-
-    <form id="formSetoran" onsubmit="kirimKeAppsScript(event)">
-      <input type="hidden" id="noKK" value="-">
-
-      <div class="mb-2">
-        <label class="form-label small fw-semibold mb-1">Kode QR KK</label>
-        <input type="text" id="qrCode" class="form-control form-control-sm bg-light fw-mono" placeholder="Otomatis dari hasil scan" readonly required>
-      </div>
-
-      <div class="row g-2 mb-3">
-        <div class="col-8">
-          <label class="form-label small fw-semibold mb-1">Kepala Keluarga</label>
-          <input type="text" id="kepalaKeluarga" class="form-control form-control-sm bg-light fw-bold" readonly required>
-        </div>
-        <div class="col-4">
-          <label class="form-label small fw-semibold mb-1">RT</label>
-          <input type="text" id="rtKK" class="form-control form-control-sm bg-light text-center fw-bold" readonly required>
-        </div>
-      </div>
-
-      <!-- Pilihan Jenis Setoran -->
-      <div class="mb-2">
-        <label class="form-label small fw-semibold mb-1">Jenis Setoran</label>
-        <div class="btn-group w-100" role="group">
-          <input type="radio" class="btn-check" name="opsiJenis" id="jenisUang" value="Uang" checked onchange="aturTampilanJenis()">
-          <label class="btn btn-outline-success btn-sm" for="jenisUang">💵 Uang Tunai</label>
-
-          <input type="radio" class="btn-check" name="opsiJenis" id="jenisBeras" value="Beras" onchange="aturTampilanJenis()">
-          <label class="btn btn-outline-success btn-sm" for="jenisBeras">🌾 Beras</label>
-        </div>
-      </div>
-
-      <!-- Input Uang -->
-      <div id="blokUang" class="mb-3">
-        <label class="form-label small fw-semibold mb-1">Nominal Uang (Rp)</label>
-        <div class="d-flex gap-1 mb-2 flex-wrap">
-          <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(5000)">5.000</button>
-          <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(10000)">10.000</button>
-          <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(15000)">15.000</button>
-          <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(20000)">20.000</button>
-        </div>
-        <input type="number" id="nominalUang" class="form-control" value="5000" min="0" step="500">
-      </div>
-
-      <!-- Input Beras -->
-      <div id="blokBeras" class="mb-3 d-none">
-        <div class="row g-2">
-          <div class="col-7">
-            <label class="form-label small fw-semibold mb-1">Jumlah Beras</label>
-            <input type="number" id="jumlahBeras" class="form-control" value="0" min="0" step="0.5">
-          </div>
-          <div class="col-5">
-            <label class="form-label small fw-semibold mb-1">Satuan</label>
-            <select id="satuanBeras" class="form-select">
-              <option value="Gelas/Cangkir">Gelas/Cangkir</option>
-              <option value="Liter">Liter</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <!-- Pesan Notifikasi Hasil -->
-      <div id="pesanNotif" class="alert d-none py-2 px-3 small mb-3"></div>
-
-      <!-- Tombol Kirim Langsung -->
+      <div id="loginMsg" class="alert alert-danger d-none py-2 small mb-3"></div>
       <div class="d-grid">
-        <button type="submit" id="btnKirimGAS" class="btn btn-success btn-action" disabled>
-          🚀 KIRIM LANGSUNG KE SPREADSHEET RW 15
-        </button>
+        <button type="submit" class="btn btn-success btn-action">MASUK APLIKASI</button>
       </div>
     </form>
+    <div class="text-center mt-3">
+      <small class="text-muted">Aplikasi ini khusus petugas resmi RW 15.</small>
+    </div>
   </div>
+
+  <!-- ================= APLIKASI UTAMA (DISEMBUNYIKAN SEBELUM LOGIN) ================= -->
+  <div id="layarApp" class="d-none">
+    <!-- Header Aplikasi -->
+    <div class="card card-custom p-3 mb-3 bg-success text-white text-center">
+      <div class="d-flex justify-content-between align-items-center">
+        <small id="infoPetugasLogin" class="fw-bold">Petugas: -</small>
+        <button class="btn btn-sm btn-light py-0 text-danger fw-bold" onclick="logoutApp()">Keluar</button>
+      </div>
+      <h5 class="fw-bold mb-0 mt-1">PETUGAS PERELEK RW 15</h5>
+      <small class="opacity-75">Scan QR & Input Cepat</small>
+    </div>
+
+    <!-- Status Database & Tanggal -->
+    <div class="card card-custom p-3 mb-3">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="small fw-bold text-secondary">STATUS DATABASE</span>
+        <span id="statusKoneksi" class="badge bg-warning text-dark">Memuat Data KK...</span>
+      </div>
+      <div class="row g-2">
+        <div class="col-12">
+          <label class="form-label small fw-semibold mb-1">Sabtu Mulai</label>
+          <input type="date" id="sabtuMulai" class="form-control form-control-sm" required>
+        </div>
+      </div>
+    </div>
+
+    <!-- Kamera Scanner QR -->
+    <div class="card card-custom p-3 mb-3">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="small fw-bold text-success">1. SCAN QR RUMAH WARGA</span>
+        <button type="button" class="btn btn-sm btn-outline-secondary py-0" onclick="muatUlangDatabase()">🔄 Sinkron KK</button>
+      </div>
+      
+      <div id="reader" class="mb-3"></div>
+
+      <label class="form-label small fw-semibold mb-1">Atau Cari Manual Kepala Keluarga / Kode QR:</label>
+      <input class="form-control form-control-sm mb-2" list="datalistKK" id="cariManualInput" placeholder="Ketik nama warga atau PRK-RT..." onchange="pilihDariPencarian()">
+      <datalist id="datalistKK"></datalist>
+    </div>
+
+    <!-- Form Input Setoran Perelek -->
+    <div class="card card-custom p-3">
+      <span class="small fw-bold text-success d-block mb-2">2. DATA SETORAN PERELEK</span>
+
+      <form id="formSetoran" onsubmit="kirimKeAppsScript(event)">
+        <input type="hidden" id="noKK" value="-">
+
+        <div class="mb-2">
+          <label class="form-label small fw-semibold mb-1">Kode QR KK</label>
+          <input type="text" id="qrCode" class="form-control form-control-sm bg-light fw-mono" placeholder="Otomatis dari hasil scan" readonly required>
+        </div>
+
+        <div class="row g-2 mb-3">
+          <div class="col-8">
+            <label class="form-label small fw-semibold mb-1">Kepala Keluarga</label>
+            <input type="text" id="kepalaKeluarga" class="form-control form-control-sm bg-light fw-bold" readonly required>
+          </div>
+          <div class="col-4">
+            <label class="form-label small fw-semibold mb-1">RT</label>
+            <input type="text" id="rtKK" class="form-control form-control-sm bg-light text-center fw-bold" readonly required>
+          </div>
+        </div>
+
+        <!-- Pilihan Jenis Setoran -->
+        <div class="mb-2">
+          <label class="form-label small fw-semibold mb-1">Jenis Setoran</label>
+          <div class="btn-group w-100" role="group">
+            <input type="radio" class="btn-check" name="opsiJenis" id="jenisUang" value="Uang" checked onchange="aturTampilanJenis()">
+            <label class="btn btn-outline-success btn-sm" for="jenisUang">💵 Uang Tunai</label>
+
+            <input type="radio" class="btn-check" name="opsiJenis" id="jenisBeras" value="Beras" onchange="aturTampilanJenis()">
+            <label class="btn btn-outline-success btn-sm" for="jenisBeras">🌾 Beras</label>
+          </div>
+        </div>
+
+        <!-- Input Uang -->
+        <div id="blokUang" class="mb-3">
+          <label class="form-label small fw-semibold mb-1">Nominal Uang (Rp)</label>
+          <div class="d-flex gap-1 mb-2 flex-wrap">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(5000)">5.000</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(10000)">10.000</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(15000)">15.000</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(20000)">20.000</button>
+          </div>
+          <input type="number" id="nominalUang" class="form-control" value="5000" min="0" step="500">
+        </div>
+
+        <!-- Input Beras -->
+        <div id="blokBeras" class="mb-3 d-none">
+          <div class="row g-2">
+            <div class="col-7">
+              <label class="form-label small fw-semibold mb-1">Jumlah Beras</label>
+              <input type="number" id="jumlahBeras" class="form-control" value="0" min="0" step="0.5">
+            </div>
+            <div class="col-5">
+              <label class="form-label small fw-semibold mb-1">Satuan</label>
+              <select id="satuanBeras" class="form-select">
+                <option value="Gelas/Cangkir">Gelas/Cangkir</option>
+                <option value="Liter">Liter</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pesan Notifikasi Hasil -->
+        <div id="pesanNotif" class="alert d-none py-2 px-3 small mb-3"></div>
+
+        <!-- Tombol Kirim Langsung -->
+        <div class="d-grid">
+          <button type="submit" id="btnKirimGAS" class="btn btn-success btn-action" disabled>
+            🚀 KIRIM LANGSUNG KE SPREADSHEET RW 15
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
 </div>
 
 <script>
-  // Link Web App / API Apps Script Anda yang sudah aktif
   const GAS_EXEC_URL = "https://script.google.com/macros/s/AKfycbwzp9NOWGeKRb5Dzx5Ujoh84Z6c-z1OxTPhphlXSekar6IkYBRgRp8R6qEJZfg63JKN7w/exec";
   let daftarKK = [];
+  let petugasAktif = "";
 
   window.addEventListener('DOMContentLoaded', () => {
+    // Cek apakah sudah login sebelumnya di sesi ini
+    const savedLogin = sessionStorage.getItem('PETUGAS_AKTIF');
+    if (savedLogin) {
+      petugasAktif = savedLogin;
+      tampilkanHalamanApp();
+    }
+
     const today = new Date();
     const diffToSat = (6 - today.getDay() + 7) % 7;
     today.setDate(today.getDate() + diffToSat);
     document.getElementById('sabtuMulai').value = today.toISOString().split('T')[0];
+  });
 
+  // Fungsi Login Petugas mencocokkan ke database Apps Script
+  async function prosesLogin(e) {
+    e.preventDefault();
+    const u = document.getElementById('inputUser').value.trim();
+    const p = document.getElementById('inputPass').value.trim();
+    const msgBox = document.getElementById('loginMsg');
+    msgBox.classList.add('d-none');
+
+    try {
+      const res = await fetch(GAS_EXEC_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'loginUser', args: [u, p] })
+      });
+      const json = await res.json();
+
+      if (json.status === 'success' && json.data && json.data.success) {
+        petugasAktif = json.data.user.nama || u;
+        sessionStorage.setItem('PETUGAS_AKTIF', petugasAktif);
+        tampilkanHalamanApp();
+      } else {
+        throw new Error(json.data ? json.data.message : 'Login gagal');
+      }
+    } catch (err) {
+      msgBox.innerText = "❌ " + (err.message || "Nama petugas atau password salah!");
+      msgBox.classList.remove('d-none');
+    }
+  }
+
+  function tampilkanHalamanApp() {
+    document.getElementById('layarLogin').classList.add('d-none');
+    document.getElementById('layarApp').classList.remove('d-none');
+    document.getElementById('infoPetugasLogin').innerText = "Petugas: " + petugasAktif;
     muatUlangDatabase();
     jalankanScannerQR();
-  });
+  }
+
+  function logoutApp() {
+    sessionStorage.removeItem('PETUGAS_AKTIF');
+    location.reload();
+  }
 
   async function muatUlangDatabase() {
     const badge = document.getElementById('statusKoneksi');
@@ -179,9 +255,12 @@
     }
   }
 
+  let scannerTerpasang = false;
   function jalankanScannerQR() {
+    if (scannerTerpasang) return;
     const scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 220, height: 220 } });
     scanner.render((decodedText) => { prosesKodeQR(decodedText); });
+    scannerTerpasang = true;
   }
 
   function pilihDariPencarian() {
@@ -228,7 +307,7 @@
       jumlahBeras: document.getElementById('jumlahBeras').value,
       nominalUang: document.getElementById('nominalUang').value,
       sabtuMulai: document.getElementById('sabtuMulai').value,
-      petugas: document.getElementById('petugas').value
+      petugas: petugasAktif
     };
 
     try {
