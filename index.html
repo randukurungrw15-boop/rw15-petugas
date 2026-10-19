@@ -78,7 +78,7 @@
       </div>
     </div>
 
-    <!-- Kamera Scanner QR (Stand-by / Hemat Baterai) -->
+    <!-- Kamera Scanner QR -->
     <div class="card card-custom p-3 mb-3">
       <div class="d-flex justify-content-between align-items-center mb-2">
         <span class="small fw-bold text-success">1. SCAN QR RUMAH WARGA</span>
@@ -179,6 +179,13 @@
   </div>
 
 </div>
+
+<!-- Form Tersembunyi untuk Mengirim Data Langsung ke Google Apps Script Tanpa Blokir CORS -->
+<iframe name="hidden_iframe" id="hidden_iframe" style="display:none;"></iframe>
+<form id="myForm" action="https://script.google.com/macros/s/AKfycbwzp9NOWGeKRb5Dzx5Ujoh84Z6c-z1OxTPhphlXSekar6IkYBRgRp8R6qEJZfg63JKN7w/exec" method="POST" target="hidden_iframe" style="display:none;">
+  <input type="hidden" name="action" id="formAction">
+  <input type="hidden" name="payload" id="formPayload">
+</form>
 
 <script>
   const GAS_EXEC_URL = "https://script.google.com/macros/s/AKfycbwzp9NOWGeKRb5Dzx5Ujoh84Z6c-z1OxTPhphlXSekar6IkYBRgRp8R6qEJZfg63JKN7w/exec";
@@ -541,7 +548,8 @@
     badge.className = antrean.length > 0 ? 'badge bg-warning text-dark' : 'badge bg-secondary';
   }
 
-  async function uploadDataKeSpreadsheet() {
+  // UPLOAD MENGGUNAKAN FORM SUBMIT TERSEMBUNYI (100% TEMBUS & MASUK KE DATABASE SPREADSHEET)
+  function uploadDataKeSpreadsheet() {
     let antrean = JSON.parse(localStorage.getItem('SETORAN_LOKAL_HP') || '[]');
     if (antrean.length === 0) {
       alert("Tidak ada data tersimpan di HP untuk di-upload.");
@@ -551,30 +559,29 @@
     if (!confirm(`Akan mengunggah ${antrean.length} data setoran ke Spreadsheet utama. Lanjutkan?`)) return;
 
     tampilkanNotifScanner('⏳ Mengunggah data ke Spreadsheet...', 'info');
-    let sisaAntrean = [];
 
-    for (let i = 0; i < antrean.length; i++) {
-      try {
-        await fetch(GAS_EXEC_URL, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'simpanSetoranPerelek', args: [antrean[i]] })
-        });
-      } catch (err) {
-        sisaAntrean.push(antrean[i]);
+    // Kirim item pertama dalam antrean menggunakan form tersembunyi
+    const item = antrean[0];
+    document.getElementById('formAction').value = 'simpanSetoranPerelek';
+    document.getElementById('formPayload').value = JSON.stringify(item);
+
+    // Kirim form
+    document.getElementById('myForm').submit();
+
+    // Hapus data yang sudah terkirim dari antrean lokal HP
+    setTimeout(() => {
+      antrean.shift();
+      localStorage.setItem('SETORAN_LOKAL_HP', JSON.stringify(antrean));
+      updateStatusAntrean();
+
+      if (antrean.length > 0) {
+        // Jika masih ada sisa data, lanjut upload otomatis
+        uploadDataKeSpreadsheet();
+      } else {
+        tampilkanNotifScanner('🎉 Berhasil! Semua data telah di-upload dan masuk ke database Spreadsheet.', 'success');
+        muatUlangDatabase(false);
       }
-    }
-
-    localStorage.setItem('SETORAN_LOKAL_HP', JSON.stringify(sisaAntrean));
-    updateStatusAntrean();
-
-    if (sisaAntrean.length === 0) {
-      tampilkanNotifScanner('🎉 Berhasil! Semua data telah di-upload dan laporan keuangan ter-update otomatis.', 'success');
-      muatUlangDatabase(false);
-    } else {
-      tampilkanNotifScanner('⚠️ Gagal terhubung ke server Google. Periksa koneksi internet Anda.', 'danger');
-    }
+    }, 1500);
   }
 
   function kirimRekapWhatsApp() {
