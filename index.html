@@ -27,7 +27,7 @@
     <form onsubmit="prosesLogin(event)">
       <div class="mb-3">
         <label class="form-label small fw-semibold">Nama Petugas / Username</label>
-        <input type="text" id="inputUser" class="form-control" placeholder="Contoh: admin_rw15 / Dandi Supriatna" required>
+        <input type="text" id="inputUser" class="form-control" placeholder="Contoh: admin_rw15" required>
       </div>
       <div class="mb-3">
         <label class="form-label small fw-semibold">PIN / Password Petugas</label>
@@ -69,7 +69,7 @@
       </div>
 
       <div class="d-grid gap-2 mt-2">
-        <button type="button" class="btn btn-primary btn-sm fw-bold" onclick="uploadDataKeSpreadsheet()">
+        <button type="button" id="btnUploadServer" class="btn btn-primary btn-sm fw-bold" onclick="uploadDataKeSpreadsheet()">
           ☁️ Upload Data ke Spreadsheet (Update Keuangan Otomatis)
         </button>
         <button type="button" class="btn btn-success btn-sm fw-bold" onclick="kirimRekapWhatsApp()">
@@ -78,7 +78,7 @@
       </div>
     </div>
 
-    <!-- Kamera Scanner QR -->
+    <!-- Kamera Scanner QR (Stand-by / Hemat Baterai) -->
     <div class="card card-custom p-3 mb-3">
       <div class="d-flex justify-content-between align-items-center mb-2">
         <span class="small fw-bold text-success">1. SCAN QR RUMAH WARGA</span>
@@ -109,7 +109,7 @@
     </div>
 
     <!-- Form Input Setoran -->
-    <div class="card card-custom p-3">
+    <div class="card card-custom p-3 mb-3">
       <span class="small fw-bold text-success d-block mb-2">2. SIMPAN SETORAN KE MEMORI HP</span>
 
       <form id="formSetoran" onsubmit="simpanSetoranLokal(event)">
@@ -157,7 +157,7 @@
           <div class="row g-2">
             <div class="col-7">
               <label class="form-label small fw-semibold mb-1">Jumlah Beras</label>
-              <input type="number" id="jumlahBeras" class="form-control" value="0" min="0" step="0.5">
+              <input type="number" id="jumlahBeras" class="form-control" value="1" min="0" step="0.5">
             </div>
             <div class="col-5">
               <label class="form-label small fw-semibold mb-1">Satuan</label>
@@ -176,25 +176,28 @@
         </div>
       </form>
     </div>
+
+    <!-- Daftar Antrean Tersimpan di HP -->
+    <div id="cardDaftarAntrean" class="card card-custom p-3 d-none">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="small fw-bold text-secondary">📋 DAFTAR BELUM DI-UPLOAD</span>
+        <button type="button" class="btn btn-sm btn-outline-danger py-0" style="font-size:11px;" onclick="hapusSemuaAntrean()">Kosongkan</button>
+      </div>
+      <div id="listAntreanContainer" class="small"></div>
+    </div>
+
   </div>
 
 </div>
 
-<!-- Form Tersembunyi untuk Mengirim Data Langsung ke Google Apps Script Tanpa Blokir CORS -->
-<iframe name="hidden_iframe" id="hidden_iframe" style="display:none;"></iframe>
-<form id="myForm" action="https://script.google.com/macros/s/AKfycbwzp9NOWGeKRb5Dzx5Ujoh84Z6c-z1OxTPhphlXSekar6IkYBRgRp8R6qEJZfg63JKN7w/exec" method="POST" target="hidden_iframe" style="display:none;">
-  <input type="hidden" name="action" id="formAction">
-  <input type="hidden" name="payload" id="formPayload">
-</form>
-
 <script>
   const GAS_EXEC_URL = "https://script.google.com/macros/s/AKfycbwzp9NOWGeKRb5Dzx5Ujoh84Z6c-z1OxTPhphlXSekar6IkYBRgRp8R6qEJZfg63JKN7w/exec";
-  const SHEET_URL_BASE = "https://docs.google.com/spreadsheets/d/" + "1dYr-lh2eCB9feuowBkEvzmf6XY8O0s5iRiAALDH8TI8";
 
   let daftarKK = [];
   let riwayatPerelek = [];
   let petugasAktif = "";
   let html5QrCode = null;
+  let sedangUpload = false;
 
   window.addEventListener('DOMContentLoaded', () => {
     const savedTanggal = localStorage.getItem('SABTU_PILIHAN_PETUGAS');
@@ -258,6 +261,11 @@
       if (json.status === 'success' && json.data && json.data.success) {
         petugasAktif = json.data.user.nama || u;
         localStorage.setItem('PETUGAS_AKTIF', petugasAktif);
+
+        // Langsung simpan data dashboard dari hasil login bila tersedia
+        if (json.data.dashboard) {
+          prosesSimpanDashboard(json.data.dashboard);
+        }
         bukaLayarUtama();
       } else {
         throw new Error(json.data ? json.data.message : 'Login gagal');
@@ -296,6 +304,43 @@
     location.reload();
   }
 
+  // Mengolah objek dashboard dari Code.gs (kkList dan perelekLogs)
+  function prosesSimpanDashboard(db) {
+    if (!db) return;
+    if (Array.isArray(db.kkList) && db.kkList.length > 0) {
+      daftarKK = db.kkList;
+    }
+
+    // Code.gs mengirimkan riwayat perelek di dalam db.perelekLogs dengan struktur { rowNumber, cells: [...] }
+    let parsedLogs = [];
+    if (Array.isArray(db.perelekLogs)) {
+      parsedLogs = db.perelekLogs.map(rowObj => {
+        const c = rowObj.cells || [];
+        return {
+          id: c[0] || '',
+          tanggal: c[1] || '',
+          qr: c[2] || '',
+          nokk: c[3] || '-',
+          nama: c[4] || '',
+          rt: c[5] || '',
+          jenis: c[6] || '',
+          gelas: Number(c[8] || 0),
+          uang: Number(String(c[11] || '0').replace(/[^0-9.-]+/g, '')) || 0,
+          minggu: Number(c[12] || 1),
+          sabtuMulai: String(c[13] || c[1] || '').trim()
+        };
+      }).filter(item => item.qr || item.nama);
+    }
+
+    if (parsedLogs.length > 0) {
+      riwayatPerelek = parsedLogs;
+    }
+
+    localStorage.setItem('CACHE_DAFTAR_KK', JSON.stringify(daftarKK));
+    localStorage.setItem('CACHE_RIWAYAT_PERELEK', JSON.stringify(riwayatPerelek));
+    isiDatalistKK();
+  }
+
   async function muatUlangDatabase(tampilkanPesanManual) {
     const badge = document.getElementById('statusSinkronBadge');
     if (tampilkanPesanManual || daftarKK.length === 0) {
@@ -307,52 +352,19 @@
       const res = await fetch(GAS_EXEC_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'masukSebagaiWarga', args: [] })
+        body: JSON.stringify({ action: 'getDashboardData', args: [] })
       });
       const json = await res.json();
 
       if (json.status === 'success' && json.data) {
         const db = json.data.dashboard || json.data;
-        daftarKK = db.kkList || db.dataKK || [];
-        let rawPerelek = db.perelek || db.perelekList || db.riwayatPerelek || db.riwayatBayar || db.setoranList || [];
-        
-        try {
-          const gvizRes = await fetch(`${SHEET_URL_BASE}/gviz/tq?tqx=out:json&sheet=Perelek`);
-          const gvizText = await gvizRes.text();
-          const jsonStr = gvizText.substring(gvizText.indexOf('{'), gvizText.lastIndexOf('}') + 1);
-          const gvizData = JSON.parse(jsonStr);
-          if (gvizData.table && gvizData.table.rows) {
-            rawPerelek = gvizData.table.rows.map(r => {
-              const c = r.c || [];
-              return {
-                id: c[0] ? c[0].v : '',
-                tanggal: c[1] ? (c[1].f || c[1].v) : '',
-                qr: c[2] ? c[2].v : '',
-                nama: c[4] ? c[4].v : '',
-                rt: c[5] ? c[5].v : '',
-                jenis: c[6] ? c[6].v : '',
-                uang: c[11] ? c[11].v : 0,
-                minggu: c[12] ? Number(c[12].v || 1) : 1,
-                sabtuMulai: c[13] ? String(c[13].f || c[13].v).trim() : ''
-              };
-            }).filter(item => item.qr && item.qr !== 'QR_KK');
-          }
-        } catch (eGviz) {
-          console.log("Menggunakan riwayat dari Apps Script");
-        }
-
-        riwayatPerelek = rawPerelek;
-
-        localStorage.setItem('CACHE_DAFTAR_KK', JSON.stringify(daftarKK));
-        localStorage.setItem('CACHE_RIWAYAT_PERELEK', JSON.stringify(riwayatPerelek));
-
-        isiDatalistKK();
+        prosesSimpanDashboard(db);
 
         badge.className = 'badge bg-success';
         badge.innerText = `✅ Tersinkron (${daftarKK.length} KK • ${riwayatPerelek.length} Setoran)`;
         
         if (tampilkanPesanManual) {
-          tampilkanNotifScanner('✨ Data KK & Status Lunas berhasil diperbarui!', 'success');
+          tampilkanNotifScanner('✨ Data KK & Status Lunas berhasil diperbarui dari Spreadsheet!', 'success');
         }
       }
     } catch (err) {
@@ -437,25 +449,34 @@
     }
   }
 
+  // Persis seperti normalizeSabtuISO di Code.gs agar pencocokan hari Sabtu 100% identik
+  function normalizeSabtuClient(isoStr) {
+    let clean = String(isoStr || '').trim().substring(0, 10);
+    if (clean.includes('/')) {
+      const p = clean.split('/');
+      if (p[2] && p[2].length === 4) clean = `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
+    }
+    const parts = clean.split('-').map(Number);
+    let d = (parts.length === 3 && parts[0] > 2000) ? new Date(parts[0], (parts[1] || 1) - 1, parts[2] || 1) : new Date();
+    if (isNaN(d.getTime())) d = new Date();
+    if (d.getDay() !== 6) {
+      d.setDate(d.getDate() + ((6 - d.getDay() + 7) % 7));
+    }
+    return formatYYYYMMDD(d);
+  }
+
   function apakahTanggalTertutupLunas(sabtuMulaiStr, jumlahMinggu, sabtuTargetStr) {
     if (!sabtuMulaiStr || !sabtuTargetStr) return false;
-    
-    let cleanMulai = String(sabtuMulaiStr).trim().substring(0, 10);
-    if (cleanMulai.includes('/')) {
-      const p = cleanMulai.split('/');
-      if (p[2] && p[2].length === 4) cleanMulai = `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
-    }
-
-    const pMulai = cleanMulai.split('-');
-    if (pMulai.length !== 3) return cleanMulai === sabtuTargetStr;
-
+    const targetNorm = normalizeSabtuClient(sabtuTargetStr);
+    const mulaiNorm = normalizeSabtuClient(sabtuMulaiStr);
+    const pMulai = mulaiNorm.split('-').map(Number);
     const jmlMg = Math.max(1, Number(jumlahMinggu || 1));
-    const dtMulai = new Date(Number(pMulai[0]), Number(pMulai[1]) - 1, Number(pMulai[2]));
+    const dtMulai = new Date(pMulai[0], pMulai[1] - 1, pMulai[2]);
 
     for (let i = 0; i < jmlMg; i++) {
       const dtCek = new Date(dtMulai);
       dtCek.setDate(dtCek.getDate() + (i * 7));
-      if (formatYYYYMMDD(dtCek) === sabtuTargetStr) {
+      if (formatYYYYMMDD(dtCek) === targetNorm) {
         return true;
       }
     }
@@ -472,14 +493,12 @@
       const namaWarga = String(cocok.nama).trim().toUpperCase();
 
       const sudahLunasServer = riwayatPerelek.some(r => {
-        const rQr = String(r.qr || r.qrCode || r.QR_KK || '').trim().toUpperCase();
-        const rNama = String(r.nama || r.kepalaKeluarga || r['Kepala Keluarga'] || '').trim().toUpperCase();
-        const rSabtuMulai = r.sabtuMulai || r['Sabtu Mulai'] || r.tanggal || '';
-        const rMinggu = r.minggu || r.Minggu || (Number(r.uang || r.nominal || 0) >= 5000 ? Math.floor(Number(r.uang || r.nominal) / 5000) : 1);
+        const rQr = String(r.qr || '').trim().toUpperCase();
+        const rNama = String(r.nama || '').trim().toUpperCase();
+        const rSabtuMulai = r.sabtuMulai || r.tanggal || '';
+        const rMinggu = r.minggu || (Number(r.uang || 0) >= 5000 ? Math.floor(Number(r.uang) / 5000) : 1);
 
-        const cocokOrang = (rQr === qrWarga || rNama === namaWarga);
-        if (!cocokOrang) return false;
-
+        if (rQr !== qrWarga && rNama !== namaWarga) return false;
         return apakahTanggalTertutupLunas(rSabtuMulai, rMinggu, sabtuTarget);
       });
 
@@ -492,140 +511,4 @@
       });
 
       document.getElementById('qrCode').value = cocok.qr;
-      document.getElementById('noKK').value = cocok.nokk || '-';
-      document.getElementById('kepalaKeluarga').value = cocok.nama;
-      document.getElementById('rtKK').value = cocok.rt;
-
-      if (sudahLunasServer || sudahLunasLokal) {
-        document.getElementById('btnSimpanLokal').disabled = true;
-        tampilkanNotifScanner(`❌ DITOLAK: KK ${cocok.nama} sudah lunas pada periode Sabtu ini!`, 'danger');
-      } else {
-        document.getElementById('btnSimpanLokal').disabled = false;
-        tampilkanNotifScanner(`✅ Warga ditemukan: ${cocok.nama}. Silakan masukkan setoran.`, 'success');
-      }
-    } else {
-      resetForm();
-      tampilkanNotifScanner('❌ DITOLAK: Kode QR / Warga tidak ditemukan di database!', 'danger');
-    }
-  }
-
-  function aturTampilanJenis() {
-    const jns = document.querySelector('input[name="opsiJenis"]:checked').value;
-    document.getElementById('blokUang').classList.toggle('d-none', jns !== 'Uang');
-    document.getElementById('blokBeras').classList.toggle('d-none', jns !== 'Beras');
-  }
-
-  function setUang(n) { document.getElementById('nominalUang').value = n; }
-
-  function simpanSetoranLokal(e) {
-    e.preventDefault();
-
-    const formPayload = {
-      qrCode: document.getElementById('qrCode').value,
-      noKK: document.getElementById('noKK').value || '-',
-      kepalaKeluarga: document.getElementById('kepalaKeluarga').value,
-      rtKK: document.getElementById('rtKK').value,
-      satuanBeras: document.getElementById('satuanBeras').value,
-      jumlahBeras: document.getElementById('jumlahBeras').value,
-      nominalUang: document.getElementById('nominalUang').value,
-      sabtuMulai: document.getElementById('sabtuMulai').value,
-      petugas: petugasAktif
-    };
-
-    let antrean = JSON.parse(localStorage.getItem('SETORAN_LOKAL_HP') || '[]');
-    antrean.push(formPayload);
-    localStorage.setItem('SETORAN_LOKAL_HP', JSON.stringify(antrean));
-
-    tampilkanNotifScanner(`💾 Setoran KK ${formPayload.kepalaKeluarga} tersimpan di HP!`, 'success');
-    updateStatusAntrean();
-    resetForm();
-  }
-
-  function updateStatusAntrean() {
-    let antrean = JSON.parse(localStorage.getItem('SETORAN_LOKAL_HP') || '[]');
-    const badge = document.getElementById('statusAntreanBadge');
-    badge.innerText = antrean.length + ' Data Tersimpan';
-    badge.className = antrean.length > 0 ? 'badge bg-warning text-dark' : 'badge bg-secondary';
-  }
-
-  function uploadDataKeSpreadsheet() {
-    let antrean = JSON.parse(localStorage.getItem('SETORAN_LOKAL_HP') || '[]');
-    if (antrean.length === 0) {
-      alert("Tidak ada data tersimpan di HP untuk di-upload.");
-      return;
-    }
-
-    if (!confirm(`Akan mengunggah ${antrean.length} data setoran ke Spreadsheet utama. Lanjutkan?`)) return;
-
-    tampilkanNotifScanner('⏳ Mengunggah data ke Spreadsheet...', 'info');
-
-    const item = antrean[0];
-    document.getElementById('formAction').value = 'simpanSetoranPerelek';
-    document.getElementById('formPayload').value = JSON.stringify(item);
-
-    document.getElementById('myForm').submit();
-
-    setTimeout(() => {
-      antrean.shift();
-      localStorage.setItem('SETORAN_LOKAL_HP', JSON.stringify(antrean));
-      updateStatusAntrean();
-
-      if (antrean.length > 0) {
-        uploadDataKeSpreadsheet();
-      } else {
-        tampilkanNotifScanner('🎉 Berhasil! Semua data telah di-upload dan masuk ke database Spreadsheet.', 'success');
-        muatUlangDatabase(false);
-      }
-    }, 1500);
-  }
-
-  function kirimRekapWhatsApp() {
-    let antrean = JSON.parse(localStorage.getItem('SETORAN_LOKAL_HP') || '[]');
-    const sabtuPilih = document.getElementById('sabtuMulai').value;
-    
-    if (antrean.length === 0) {
-      alert("Belum ada data setoran baru di HP untuk dikirim.");
-      return;
-    }
-
-    let pesan = `📋 *REKAP SETORAN PERELEK RW 15*\n`;
-    pesan += `📅 Periode Sabtu: ${sabtuPilih}\n`;
-    pesan += `👤 Petugas Penarik: ${petugasAktif}\n`;
-    pesan += `----------------------------------------\n`;
-
-    let totalUang = 0;
-    let totalBeras = 0;
-
-    antrean.forEach((item, index) => {
-      let infoSetor = Number(item.nominalUang || 0) > 0 ? `Rp ${Number(item.nominalUang).toLocaleString('id-ID')}` : `${item.jumlahBeras} ${item.satuanBeras || 'Satuan'}`;
-      pesan += `${index + 1}. ${item.kepalaKeluarga} (${item.rtKK}) - ${infoSetor}\n`;
-      if (Number(item.nominalUang || 0) > 0) totalUang += Number(item.nominalUang);
-      if (Number(item.jumlahBeras || 0) > 0) totalBeras += Number(item.jumlahBeras);
-    });
-
-    pesan += `----------------------------------------\n`;
-    pesan += `💵 *TOTAL UANG:* Rp ${totalUang.toLocaleString('id-ID')}\n`;
-    pesan += `🌾 *TOTAL BERAS:* ${totalBeras} Satuan\n`;
-    pesan += `_Laporan dikirim via Aplikasi Petugas RW 15 Digital_`;
-
-    const encodedPesan = encodeURIComponent(pesan);
-    window.open(`https://api.whatsapp.com/send?text=${encodedPesan}`, '_blank');
-  }
-
-  function resetForm() {
-    document.getElementById('qrCode').value = '';
-    document.getElementById('kepalaKeluarga').value = '';
-    document.getElementById('rtKK').value = '';
-    document.getElementById('btnSimpanLokal').disabled = true;
-    document.getElementById('cariManualInput').value = '';
-  }
-
-  function tampilkanNotifScanner(pesan, tipe) {
-    const box = document.getElementById('pesanNotifScanner');
-    box.className = 'alert alert-' + tipe + ' py-2 px-3 small mb-2 fw-bold text-center';
-    box.innerText = pesan;
-    box.classList.remove('d-none');
-  }
-</script>
-</body>
-</html>
+      document.getElementById
