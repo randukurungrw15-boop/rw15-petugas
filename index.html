@@ -151,7 +151,7 @@
             <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(15000)">15.000 (3 Mg)</button>
             <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(20000)">20.000 (4 Mg)</button>
           </div>
-          <input type="number" id="nominalUang" class="form-control" placeholder="Masukkan nominal uang (Rp)" min="0" step="500">
+          <input type="number" id="nominalUang" class="form-control" placeholder="Pilih tombol atau ketik nominal (Rp)" value="" min="0" step="500">
         </div>
 
         <div id="blokBeras" class="mb-3 d-none">
@@ -165,7 +165,7 @@
           <div class="row g-2">
             <div class="col-7">
               <label class="form-label small fw-semibold mb-1">Jumlah Beras</label>
-              <input type="number" id="jumlahBeras" class="form-control" placeholder="Masukkan jumlah" min="0" step="0.5">
+              <input type="number" id="jumlahBeras" class="form-control" placeholder="Ketik jumlah beras" value="" min="0" step="0.5">
             </div>
             <div class="col-5">
               <label class="form-label small fw-semibold mb-1">Satuan</label>
@@ -198,7 +198,9 @@
   let html5QrCode = null;
   let audioCtx = null;
 
-  // FUNGSI EFEK SUARA BEEP & SUARA BICARA (OFFLINE-FRIENDLY)
+  // ==========================================
+  // FUNGSI NOTIFIKASI SUARA (NADA & BICARA)
+  // ==========================================
   function putarNadaNotifikasi(tipe = 'sukses') {
     try {
       if (!audioCtx) {
@@ -212,24 +214,23 @@
       const now = audioCtx.currentTime;
 
       if (tipe === 'sukses') {
-        // Nada 1 (C5)
+        // Nada Chime 2 Tingkatan (C5 -> G5)
         const osc1 = audioCtx.createOscillator();
         const gain1 = audioCtx.createGain();
         osc1.type = 'sine';
         osc1.frequency.setValueAtTime(523.25, now);
-        gain1.gain.setValueAtTime(0.25, now);
+        gain1.gain.setValueAtTime(0.3, now);
         gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
         osc1.connect(gain1);
         gain1.connect(audioCtx.destination);
         osc1.start(now);
         osc1.stop(now + 0.15);
 
-        // Nada 2 (G5)
         const osc2 = audioCtx.createOscillator();
         const gain2 = audioCtx.createGain();
         osc2.type = 'sine';
         osc2.frequency.setValueAtTime(783.99, now + 0.15);
-        gain2.gain.setValueAtTime(0.3, now + 0.15);
+        gain2.gain.setValueAtTime(0.35, now + 0.15);
         gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
         osc2.connect(gain2);
         gain2.connect(audioCtx.destination);
@@ -250,16 +251,16 @@
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(220, now);
-        gain.gain.setValueAtTime(0.2, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+        osc.frequency.setValueAtTime(200, now);
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
         osc.connect(gain);
         gain.connect(audioCtx.destination);
         osc.start(now);
-        osc.stop(now + 0.3);
+        osc.stop(now + 0.35);
       }
     } catch (e) {
-      console.warn("Audio tidak didukung:", e);
+      console.warn("Audio gagal diputar:", e);
     }
   }
 
@@ -267,14 +268,14 @@
     try {
       if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
-        const pesanSuara = new SpeechSynthesisUtterance(teks);
-        pesanSuara.lang = 'id-ID';
-        pesanSuara.rate = 1.05;
-        pesanSuara.pitch = 1.0;
-        window.speechSynthesis.speak(pesanSuara);
+        const ucapan = new SpeechSynthesisUtterance(teks);
+        ucapan.lang = 'id-ID';
+        ucapan.rate = 1.05;
+        ucapan.pitch = 1.0;
+        window.speechSynthesis.speak(ucapan);
       }
     } catch (e) {
-      console.warn("Speech synthesis tidak didukung:", e);
+      console.warn("Fitur suara bicara tidak didukung di browser ini:", e);
     }
   }
 
@@ -631,7 +632,7 @@
     const jns = document.querySelector('input[name="opsiJenis"]:checked').value;
     document.getElementById('blokUang').classList.toggle('d-none', jns !== 'Uang');
     document.getElementById('blokBeras').classList.toggle('d-none', jns !== 'Beras');
-    // Kosongkan kedua kolom saat berganti jenis setoran
+    // Kosongkan kolom uang dan beras setiap kali ganti jenis setoran
     document.getElementById('nominalUang').value = '';
     document.getElementById('jumlahBeras').value = '';
   }
@@ -657,7 +658,7 @@
 
     if (formPayload.jumlahBeras <= 0 && formPayload.nominalUang <= 0) {
       putarNadaNotifikasi('gagal');
-      alert("Nominal uang atau jumlah beras harus diisi dan lebih dari 0!");
+      alert("Nominal uang atau jumlah beras harus diisi lebih dari 0!");
       return;
     }
 
@@ -665,7 +666,7 @@
     antrean.push(formPayload);
     localStorage.setItem('SETORAN_LOKAL_HP', JSON.stringify(antrean));
 
-    // Mainkan nada sukses & suara notifikasi bicara
+    // Mainkan bunyi notifikasi & suara bicara saat berhasil disimpan
     putarNadaNotifikasi('sukses');
     if (jns === 'Uang') {
       ucapkanSuaraNotifikasi(`Setoran uang ${formPayload.nominalUang} rupiah dari ${formPayload.kepalaKeluarga} berhasil disimpan.`);
@@ -791,7 +792,7 @@
     document.getElementById('qrCode').value = '';
     document.getElementById('kepalaKeluarga').value = '';
     document.getElementById('rtKK').value = '';
-    // Kosongkan kembali kolom nilai uang dan beras setelah disimpan
+    // Mengosongkan kembali kolom nilai uang dan beras setelah tersimpan
     document.getElementById('nominalUang').value = '';
     document.getElementById('jumlahBeras').value = '';
     document.getElementById('btnSimpanLokal').disabled = true;
