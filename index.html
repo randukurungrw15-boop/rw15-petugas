@@ -151,14 +151,21 @@
             <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(15000)">15.000 (3 Mg)</button>
             <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(20000)">20.000 (4 Mg)</button>
           </div>
-          <input type="number" id="nominalUang" class="form-control" value="5000" min="0" step="500">
+          <input type="number" id="nominalUang" class="form-control" placeholder="Masukkan nominal uang (Rp)" min="0" step="500">
         </div>
 
         <div id="blokBeras" class="mb-3 d-none">
+          <label class="form-label small fw-semibold mb-1">Pilih Cepat Jumlah Beras</label>
+          <div class="d-flex gap-1 mb-2 flex-wrap">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setBeras(1)">1</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setBeras(2)">2</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setBeras(3)">3</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setBeras(4)">4</button>
+          </div>
           <div class="row g-2">
             <div class="col-7">
               <label class="form-label small fw-semibold mb-1">Jumlah Beras</label>
-              <input type="number" id="jumlahBeras" class="form-control" value="0" min="0" step="0.5">
+              <input type="number" id="jumlahBeras" class="form-control" placeholder="Masukkan jumlah" min="0" step="0.5">
             </div>
             <div class="col-5">
               <label class="form-label small fw-semibold mb-1">Satuan</label>
@@ -189,6 +196,87 @@
   let riwayatPerelek = [];
   let petugasAktif = "";
   let html5QrCode = null;
+  let audioCtx = null;
+
+  // FUNGSI EFEK SUARA BEEP & SUARA BICARA (OFFLINE-FRIENDLY)
+  function putarNadaNotifikasi(tipe = 'sukses') {
+    try {
+      if (!audioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContext();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+
+      const now = audioCtx.currentTime;
+
+      if (tipe === 'sukses') {
+        // Nada 1 (C5)
+        const osc1 = audioCtx.createOscillator();
+        const gain1 = audioCtx.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(523.25, now);
+        gain1.gain.setValueAtTime(0.25, now);
+        gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+        osc1.connect(gain1);
+        gain1.connect(audioCtx.destination);
+        osc1.start(now);
+        osc1.stop(now + 0.15);
+
+        // Nada 2 (G5)
+        const osc2 = audioCtx.createOscillator();
+        const gain2 = audioCtx.createGain();
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(783.99, now + 0.15);
+        gain2.gain.setValueAtTime(0.3, now + 0.15);
+        gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+        osc2.connect(gain2);
+        gain2.connect(audioCtx.destination);
+        osc2.start(now + 0.15);
+        osc2.stop(now + 0.45);
+      } else if (tipe === 'scan') {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, now);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.12);
+      } else if (tipe === 'gagal') {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(220, now);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.3);
+      }
+    } catch (e) {
+      console.warn("Audio tidak didukung:", e);
+    }
+  }
+
+  function ucapkanSuaraNotifikasi(teks) {
+    try {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const pesanSuara = new SpeechSynthesisUtterance(teks);
+        pesanSuara.lang = 'id-ID';
+        pesanSuara.rate = 1.05;
+        pesanSuara.pitch = 1.0;
+        window.speechSynthesis.speak(pesanSuara);
+      }
+    } catch (e) {
+      console.warn("Speech synthesis tidak didukung:", e);
+    }
+  }
 
   window.addEventListener('DOMContentLoaded', () => {
     const savedTanggal = localStorage.getItem('SABTU_PILIHAN_PETUGAS');
@@ -242,7 +330,6 @@
     btnLogin.disabled = true;
     btnLogin.innerText = "⏳ MEMVERIFIKASI LOGIN...";
 
-    // Pemetaan pintar: Jika petugas mengetik nama "Dandi Supriatna" atau "orin", ubah ke username yang dikenali Code.gs
     let loginId = uInput;
     const lowerU = uInput.toLowerCase();
     if (lowerU === 'dandi supriatna' || lowerU === 'dandi') {
@@ -263,7 +350,6 @@
         petugasAktif = json.data.user.nama || uInput;
         localStorage.setItem('PETUGAS_AKTIF', petugasAktif);
         
-        // Simpan data dashboard langsung dari respons login jika tersedia
         if (json.data.dashboard) {
           simpanDataDashboardDariServer(json.data.dashboard);
         }
@@ -349,7 +435,6 @@
         const db = json.data.dashboard || json.data;
         simpanDataDashboardDariServer(db);
 
-        // Fallback juga ke gviz bila diperlukan
         if (riwayatPerelek.length === 0) {
           try {
             const gvizRes = await fetch(`${SHEET_URL_BASE}/gviz/tq?tqx=out:json&sheet=Perelek`);
@@ -528,13 +613,16 @@
 
       if (sudahLunasServer || sudahLunasLokal) {
         document.getElementById('btnSimpanLokal').disabled = true;
+        putarNadaNotifikasi('gagal');
         tampilkanNotifScanner(`❌ DITOLAK: KK ${cocok.nama} sudah lunas pada periode Sabtu ini!`, 'danger');
       } else {
         document.getElementById('btnSimpanLokal').disabled = false;
-        tampilkanNotifScanner(`✅ Warga ditemukan: ${cocok.nama}. Silakan masukkan setoran.`, 'success');
+        putarNadaNotifikasi('scan');
+        tampilkanNotifScanner(`✅ Warga ditemukan: ${cocok.nama}. Silakan masukkan nilai setoran.`, 'success');
       }
     } else {
       resetForm();
+      putarNadaNotifikasi('gagal');
       tampilkanNotifScanner('❌ DITOLAK: Kode QR / Warga tidak ditemukan di database!', 'danger');
     }
   }
@@ -543,20 +631,13 @@
     const jns = document.querySelector('input[name="opsiJenis"]:checked').value;
     document.getElementById('blokUang').classList.toggle('d-none', jns !== 'Uang');
     document.getElementById('blokBeras').classList.toggle('d-none', jns !== 'Beras');
-    if (jns === 'Uang') {
-      document.getElementById('jumlahBeras').value = 0;
-      if (Number(document.getElementById('nominalUang').value) <= 0) {
-        document.getElementById('nominalUang').value = 5000;
-      }
-    } else {
-      document.getElementById('nominalUang').value = 0;
-      if (Number(document.getElementById('jumlahBeras').value) <= 0) {
-        document.getElementById('jumlahBeras').value = 1;
-      }
-    }
+    // Kosongkan kedua kolom saat berganti jenis setoran
+    document.getElementById('nominalUang').value = '';
+    document.getElementById('jumlahBeras').value = '';
   }
 
   function setUang(n) { document.getElementById('nominalUang').value = n; }
+  function setBeras(n) { document.getElementById('jumlahBeras').value = n; }
 
   function simpanSetoranLokal(e) {
     e.preventDefault();
@@ -575,13 +656,23 @@
     };
 
     if (formPayload.jumlahBeras <= 0 && formPayload.nominalUang <= 0) {
-      alert("Nominal uang atau jumlah beras harus lebih dari 0!");
+      putarNadaNotifikasi('gagal');
+      alert("Nominal uang atau jumlah beras harus diisi dan lebih dari 0!");
       return;
     }
 
     let antrean = JSON.parse(localStorage.getItem('SETORAN_LOKAL_HP') || '[]');
     antrean.push(formPayload);
     localStorage.setItem('SETORAN_LOKAL_HP', JSON.stringify(antrean));
+
+    // Mainkan nada sukses & suara notifikasi bicara
+    putarNadaNotifikasi('sukses');
+    if (jns === 'Uang') {
+      ucapkanSuaraNotifikasi(`Setoran uang ${formPayload.nominalUang} rupiah dari ${formPayload.kepalaKeluarga} berhasil disimpan.`);
+    } else {
+      const satuanBersih = formPayload.satuanBeras === 'Gelas/Cangkir' ? 'gelas' : formPayload.satuanBeras;
+      ucapkanSuaraNotifikasi(`Setoran beras ${formPayload.jumlahBeras} ${satuanBersih} dari ${formPayload.kepalaKeluarga} berhasil disimpan.`);
+    }
 
     tampilkanNotifScanner(`💾 Setoran KK ${formPayload.kepalaKeluarga} tersimpan di HP!`, 'success');
     updateStatusAntrean();
@@ -633,10 +724,8 @@
           if (result.data) {
             simpanDataDashboardDariServer(result.data);
           }
-          // Jeda 800ms agar Spreadsheet selesai menulis baris & Buku Kas tanpa bentrok
           await new Promise(r => setTimeout(r, 800));
         } else {
-          // Jika ditolak karena sudah bayar di server, jangan masukkan kembali ke antrean agar tidak macet
           if (result.message && result.message.includes('SUDAH BAYAR')) {
             pesanErrorTerakhir = result.message;
           } else {
@@ -655,9 +744,12 @@
     btnUpload.disabled = false;
 
     if (sisaAntrean.length === 0) {
+      putarNadaNotifikasi('sukses');
+      ucapkanSuaraNotifikasi(`Alhamdulillah, ${berhasilCount} data setoran berhasil masuk ke Spreadsheet.`);
       tampilkanNotifScanner(`🎉 Berhasil! ${berhasilCount} data setoran telah masuk ke Spreadsheet & Buku Kas.`, 'success');
       muatUlangDatabase(false);
     } else {
+      putarNadaNotifikasi('gagal');
       tampilkanNotifScanner(`⚠️ ${berhasilCount} berhasil, ${sisaAntrean.length} tertunda (${pesanErrorTerakhir}). Klik Upload lagi.`, 'danger');
     }
   }
@@ -699,6 +791,9 @@
     document.getElementById('qrCode').value = '';
     document.getElementById('kepalaKeluarga').value = '';
     document.getElementById('rtKK').value = '';
+    // Kosongkan kembali kolom nilai uang dan beras setelah disimpan
+    document.getElementById('nominalUang').value = '';
+    document.getElementById('jumlahBeras').value = '';
     document.getElementById('btnSimpanLokal').disabled = true;
     document.getElementById('cariManualInput').value = '';
   }
