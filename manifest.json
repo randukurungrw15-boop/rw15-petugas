@@ -1,0 +1,19 @@
+{
+  "name": "Petugas Perelek RW 15 Digital",
+  "short_name": "Perelek RW 15",
+  "description": "Aplikasi Penarikan Perelek Kampung Randukurung RW 15",
+  "start_url": "/rw15-petugas/",
+  "scope": "/rw15-petugas/",
+  "display": "standalone",
+  "background_color": "#f0f4f8",
+  "theme_color": "#198754",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2921/2921222.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
