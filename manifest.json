@@ -1,7 +1,7 @@
 {
-  "name": "Aplikasi Petugas Lapangan RW 15 (Perelek & Meter Air Bersih)",
-  "short_name": "Petugas RW 15",
-  "description": "Aplikasi Petugas Lapangan Penarikan Perelek & Pencatatan Meter Air Bersih Kampung Randukurung RW 15 (Offline-First PWA)",
+  "name": "Petugas Perelek RW 15 Digital",
+  "short_name": "Perelek RW 15",
+  "description": "Aplikasi Penarikan Perelek Kampung Randukurung RW 15",
   "start_url": "/rw15-petugas/",
   "scope": "/rw15-petugas/",
   "display": "standalone",
