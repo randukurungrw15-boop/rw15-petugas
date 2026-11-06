@@ -3,87 +3,39 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <title>Aplikasi Petugas Lapangan RW 15 (Perelek & Meter Air Bersih)</title>
+  <title>Petugas Perelek - RW 15 Digital</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#198754">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
   <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2921/2921222.png">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://unpkg.com/html5-qrcode"></script>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js" defer></script>
   <style>
     body { background-color: #f0f4f8; font-family: system-ui, -apple-system, sans-serif; }
-    .app-container { max-width: 480px; margin: 0 auto; padding-bottom: 48px; }
+    .app-container { max-width: 480px; margin: 0 auto; padding-bottom: 40px; }
     .card-custom { border: none; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
-    #reader, #readerAir { width: 100%; border-radius: 12px; overflow: hidden; border: 2px dashed #198754; background: #1e293b; min-height: 220px; }
-    #readerAir { border-color: #0284c7; }
+    #reader { width: 100%; border-radius: 12px; overflow: hidden; border: 2px dashed #198754; background: #1e293b; min-height: 220px; }
     .btn-action { border-radius: 10px; font-weight: 600; padding: 10px 14px; }
-    .btn-action-xl { border-radius: 12px; font-weight: 800; padding: 14px 16px; font-size: 15.5px; }
-    .nav-mode-switch {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px;
-      background: #e2e8f0;
-      padding: 5px;
-      border-radius: 14px;
-    }
-    .nav-mode-btn {
-      border: none;
-      border-radius: 10px;
-      padding: 10px 8px;
-      font-size: 13px;
-      font-weight: 800;
-      background: transparent;
-      color: #475569;
-      transition: all 0.18s ease;
-    }
-    .nav-mode-btn.active-perelek {
-      background: #198754;
-      color: #ffffff;
-      box-shadow: 0 3px 10px rgba(25, 135, 84, 0.28);
-    }
-    .nav-mode-btn.active-air {
-      background: #0284c7;
-      color: #ffffff;
-      box-shadow: 0 3px 10px rgba(2, 132, 199, 0.28);
-    }
-    .inp-meter-angka {
-      height: 58px;
-      font-size: 26px;
-      font-weight: 800;
-      text-align: center;
-      font-family: monospace;
-      letter-spacing: 2px;
-      border: 2.5px solid #0284c7;
-      border-radius: 12px;
-      background: #f8fafc;
-    }
-    .fw-mono { font-family: monospace; }
   </style>
 </head>
 <body>
 
 <div class="container py-3 app-container">
 
-  <!-- =========================================================================
-       LAYAR LOGIN PETUGAS (DESAIN ASLI RW15-PETUGAS + DUKUNGAN PETUGAS AIR)
-       ========================================================================= -->
+  <!-- LAYAR LOGIN PETUGAS -->
   <div id="layarLogin" class="card card-custom p-4 mt-4">
     <div class="text-center mb-4">
-      <h4 class="fw-bold text-success mb-1">LOGIN PETUGAS LAPANGAN</h4>
-      <div class="badge bg-success-subtle text-success border border-success-subtle mb-1">Perelek Warga &amp; Meter Air Bersih</div>
+      <h4 class="fw-bold text-success">LOGIN PETUGAS PERELEK</h4>
       <p class="text-muted small mb-0">Kampung Randukurung RW 15</p>
     </div>
     <form onsubmit="prosesLogin(event)">
       <div class="mb-3">
         <label class="form-label small fw-semibold">Username / Nama Petugas</label>
-        <input type="text" id="inputUser" class="form-control" placeholder="masukan username" required autocomplete="username">
-        <small class="text-muted" style="font-size: 11px;">Bisa menggunakan pengurus rw, petugas perelek, atau petugas air bersih.</small>
+        <input type="text" id="inputUser" class="form-control" placeholder="masukan username" required>
+        <small class="text-muted" style="font-size: 11px;">Bisa menggunakan pengurus rw </b>, atau petugas perelek.</small>
       </div>
       <div class="mb-3">
         <label class="form-label small fw-semibold">Password Petugas</label>
-        <input type="password" id="inputPass" class="form-control" placeholder="Masukkan password" required autocomplete="current-password">
+        <input type="password" id="inputPass" class="form-control" placeholder="Masukkan password" required>
       </div>
       <div id="loginMsg" class="alert alert-danger d-none py-2 small mb-3"></div>
       <div class="d-grid gap-2">
@@ -92,339 +44,149 @@
     </form>
   </div>
 
-  <!-- =========================================================================
-       APLIKASI UTAMA PETUGAS LAPANGAN (PERELEK & METER AIR BERSIH)
-       ========================================================================= -->
+  <!-- APLIKASI UTAMA -->
   <div id="layarApp" class="d-none">
-    <!-- HEADER UTAMA -->
-    <div id="headerAppCard" class="card card-custom p-3 mb-3 bg-success text-white text-center">
+    <div class="card card-custom p-3 mb-3 bg-success text-white text-center">
       <div class="d-flex justify-content-between align-items-center">
         <small id="infoPetugasLogin" class="fw-bold">Petugas: -</small>
-        <div class="d-flex align-items-center gap-1">
-          <span id="badgeStatusKoneksi" class="badge bg-light text-success fw-bold">ONLINE</span>
-          <button class="btn btn-sm btn-light py-0 text-danger fw-bold" onclick="logoutApp()">Keluar</button>
+        <button class="btn btn-sm btn-light py-0 text-danger fw-bold" onclick="logoutApp()">Keluar</button>
+      </div>
+      <h5 class="fw-bold mb-0 mt-1">PETUGAS PERELEK RW 15</h5>
+      <small class="opacity-75">Penarikan Khusus Hari Sabtu</small>
+    </div>
+
+    <!-- Panel Status & Upload -->
+    <div class="card card-custom p-3 mb-3">
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <span class="small fw-bold text-secondary">DATABASE WARGA</span>
+        <span id="statusSinkronBadge" class="badge bg-success">Siap Digunakan</span>
+      </div>
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="small fw-bold text-secondary">DATA TERSIMPAN DI HP</span>
+        <span id="statusAntreanBadge" class="badge bg-secondary">0 Data</span>
+      </div>
+
+      <div class="mb-2">
+        <label class="form-label small fw-semibold mb-1">📅 Tanggal Sabtu Penarikan</label>
+        <input type="date" id="sabtuMulai" class="form-control form-control-sm fw-bold" required onchange="simpanTanggalPilihan()">
+        <small id="infoSabtu" class="text-muted" style="font-size: 11px;">Tanggal tetap sesuai pilihan Anda setelah login.</small>
+      </div>
+
+      <div class="d-grid gap-2 mt-2">
+        <button type="button" id="btnUploadData" class="btn btn-primary btn-sm fw-bold" onclick="uploadDataKeSpreadsheet()">
+          ☁️ Upload Data ke Spreadsheet (Update Keuangan Otomatis)
+        </button>
+        <button type="button" class="btn btn-success btn-sm fw-bold" onclick="kirimRekapWhatsApp()">
+          💬 Kirim Rekap ke WhatsApp Bendahara
+        </button>
+      </div>
+    </div>
+
+    <!-- Kamera Scanner QR -->
+    <div class="card card-custom p-3 mb-3">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="small fw-bold text-success">1. SCAN QR RUMAH WARGA</span>
+        <button type="button" class="btn btn-sm btn-outline-secondary py-0" onclick="muatUlangDatabase(true)">🔄 Perbarui Data</button>
+      </div>
+
+      <div class="d-grid gap-2 mb-2">
+        <button type="button" id="btnBukaKamera" class="btn btn-primary btn-action" onclick="mulaiScanManual()">
+          📷 BUKA KAMERA SCAN QR
+        </button>
+        <button type="button" id="btnTutupKamera" class="btn btn-danger btn-sm d-none" onclick="hentikanKameraManual()">
+          ⏹️ Matikan Kamera (Hemat Baterai)
+        </button>
+      </div>
+      
+      <div id="reader" class="mb-3 d-flex align-items-center justify-content-center text-white text-center p-3">
+        <div id="placeholderKamera">
+          <div style="font-size: 36px;">📷</div>
+          <small class="text-light opacity-75">Kamera dimatikan untuk menghemat baterai.<br>Klik <b>Buka Kamera Scan QR</b> saat tiba di rumah warga.</small>
         </div>
       </div>
-      <h5 class="fw-bold mb-0 mt-1" id="judulHeaderMode">PETUGAS PERELEK RW 15</h5>
-      <small class="opacity-75" id="subJudulHeaderMode">Penarikan Perelek Hari Sabtu &amp; Pencatatan Meter Air</small>
+
+      <div id="pesanNotifScanner" class="alert d-none py-2 px-3 small mb-2 fw-bold text-center"></div>
+
+      <label class="form-label small fw-semibold mb-1">Atau Cari Manual Kepala Keluarga / Kode QR:</label>
+      <input class="form-control form-control-sm mb-2" list="datalistKK" id="cariManualInput" placeholder="Ketik nama warga atau PRK-RT..." onchange="pilihDariPencarian()">
+      <datalist id="datalistKK"></datalist>
     </div>
 
-    <!-- TOMBOL PILIH MODUL LAPANGAN: 1. PERELEK WARGA | 2. METER AIR BERSIH -->
-    <div class="nav-mode-switch mb-3">
-      <button type="button" id="btnTabPerelek" class="nav-mode-btn active-perelek" onclick="gantiModeLapangan('perelek')">
-        🌾 1. PERELEK WARGA
-      </button>
-      <button type="button" id="btnTabAir" class="nav-mode-btn" onclick="gantiModeLapangan('air')">
-        💧 2. METER AIR BERSIH
-      </button>
-    </div>
+    <!-- Form Input Setoran -->
+    <div class="card card-custom p-3">
+      <span class="small fw-bold text-success d-block mb-2">2. SIMPAN SETORAN KE MEMORI HP</span>
 
-    <!-- =======================================================================
-         BAGIAN A: MODUL PETUGAS PERELEK WARGA (100% FITUR LAMA TETAP UTUH)
-         ======================================================================= -->
-    <div id="areaModulPerelek">
-      <!-- Panel Status & Upload Perelek -->
-      <div class="card card-custom p-3 mb-3">
-        <div class="d-flex justify-content-between align-items-center mb-1">
-          <span class="small fw-bold text-secondary">DATABASE WARGA (KK)</span>
-          <span id="statusSinkronBadge" class="badge bg-success">Siap Digunakan</span>
+      <form id="formSetoran" onsubmit="simpanSetoranLokal(event)">
+        <input type="hidden" id="noKK" value="-">
+
+        <div class="mb-2">
+          <label class="form-label small fw-semibold mb-1">Kode QR KK</label>
+          <input type="text" id="qrCode" class="form-control form-control-sm bg-light fw-mono" placeholder="Otomatis dari hasil scan" readonly required>
         </div>
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <span class="small fw-bold text-secondary">SETORAN PERELEK DI HP</span>
-          <span id="statusAntreanBadge" class="badge bg-secondary">0 Data</span>
+
+        <div class="row g-2 mb-3">
+          <div class="col-8">
+            <label class="form-label small fw-semibold mb-1">Kepala Keluarga</label>
+            <input type="text" id="kepalaKeluarga" class="form-control form-control-sm bg-light fw-bold" readonly required>
+          </div>
+          <div class="col-4">
+            <label class="form-label small fw-semibold mb-1">RT</label>
+            <input type="text" id="rtKK" class="form-control form-control-sm bg-light text-center fw-bold" readonly required>
+          </div>
         </div>
 
         <div class="mb-2">
-          <label class="form-label small fw-semibold mb-1">📅 Tanggal Sabtu Penarikan</label>
-          <input type="date" id="sabtuMulai" class="form-control form-control-sm fw-bold" required onchange="simpanTanggalPilihan()">
-          <small id="infoSabtu" class="text-muted" style="font-size: 11px;">Tanggal tetap sesuai pilihan Anda setelah login.</small>
-        </div>
+          <label class="form-label small fw-semibold mb-1">Jenis Setoran</label>
+          <div class="btn-group w-100" role="group">
+            <input type="radio" class="btn-check" name="opsiJenis" id="jenisUang" value="Uang" checked onchange="aturTampilanJenis()">
+            <label class="btn btn-outline-success btn-sm" for="jenisUang">💵 Uang Tunai</label>
 
-        <div class="d-grid gap-2 mt-2">
-          <button type="button" id="btnUploadData" class="btn btn-primary btn-sm fw-bold" onclick="uploadDataKeSpreadsheet()">
-            ☁️ Upload Setoran Perelek ke Spreadsheet (Update Kas RW)
-          </button>
-          <button type="button" class="btn btn-success btn-sm fw-bold" onclick="kirimRekapWhatsApp()">
-            💬 Kirim Rekap Perelek ke WhatsApp Bendahara
-          </button>
-        </div>
-      </div>
-
-      <!-- Kamera Scanner QR Perelek -->
-      <div class="card card-custom p-3 mb-3">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <span class="small fw-bold text-success">1. SCAN QR PERELEK RUMAH WARGA (PRK-...)</span>
-          <button type="button" class="btn btn-sm btn-outline-secondary py-0" onclick="muatUlangDatabase(true)">🔄 Perbarui Data</button>
-        </div>
-
-        <div class="d-grid gap-2 mb-2">
-          <button type="button" id="btnBukaKamera" class="btn btn-primary btn-action" onclick="mulaiScanManual()">
-            📷 BUKA KAMERA SCAN QR PERELEK
-          </button>
-          <button type="button" id="btnTutupKamera" class="btn btn-danger btn-sm d-none" onclick="hentikanKameraManual()">
-            ⏹️ Matikan Kamera (Hemat Baterai)
-          </button>
-        </div>
-        
-        <div id="reader" class="mb-3 d-flex align-items-center justify-content-center text-white text-center p-3">
-          <div id="placeholderKamera">
-            <div style="font-size: 36px;">📷</div>
-            <small class="text-light opacity-75">Kamera dimatikan untuk menghemat baterai.<br>Klik <b>Buka Kamera Scan QR Perelek</b> saat tiba di rumah warga.</small>
+            <input type="radio" class="btn-check" name="opsiJenis" id="jenisBeras" value="Beras" onchange="aturTampilanJenis()">
+            <label class="btn btn-outline-success btn-sm" for="jenisBeras">🌾 Beras</label>
           </div>
         </div>
 
-        <div id="pesanNotifScanner" class="alert d-none py-2 px-3 small mb-2 fw-bold text-center"></div>
-
-        <label class="form-label small fw-semibold mb-1">Atau Cari Manual Kepala Keluarga / Kode QR Perelek:</label>
-        <input class="form-control form-control-sm mb-2" list="datalistKK" id="cariManualInput" placeholder="Ketik nama warga atau PRK-RT..." onchange="pilihDariPencarian()">
-        <datalist id="datalistKK"></datalist>
-      </div>
-
-      <!-- Form Input Setoran Perelek -->
-      <div class="card card-custom p-3">
-        <span class="small fw-bold text-success d-block mb-2">2. SIMPAN SETORAN PERELEK KE MEMORI HP</span>
-
-        <form id="formSetoran" onsubmit="simpanSetoranLokal(event)">
-          <input type="hidden" id="noKK" value="-">
-
-          <div class="mb-2">
-            <label class="form-label small fw-semibold mb-1">Kode QR KK</label>
-            <input type="text" id="qrCode" class="form-control form-control-sm bg-light fw-mono" placeholder="Otomatis dari hasil scan" readonly required>
+        <div id="blokUang" class="mb-3">
+          <label class="form-label small fw-semibold mb-1">Nominal Uang (Rp)</label>
+          <div class="d-flex gap-1 mb-2 flex-wrap">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(5000)">5.000 (1 Mg)</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(10000)">10.000 (2 Mg)</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(15000)">15.000 (3 Mg)</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(20000)">20.000 (4 Mg)</button>
           </div>
-
-          <div class="row g-2 mb-3">
-            <div class="col-8">
-              <label class="form-label small fw-semibold mb-1">Kepala Keluarga</label>
-              <input type="text" id="kepalaKeluarga" class="form-control form-control-sm bg-light fw-bold" readonly required>
-            </div>
-            <div class="col-4">
-              <label class="form-label small fw-semibold mb-1">RT</label>
-              <input type="text" id="rtKK" class="form-control form-control-sm bg-light text-center fw-bold" readonly required>
-            </div>
-          </div>
-
-          <div class="mb-2">
-            <label class="form-label small fw-semibold mb-1">Jenis Setoran</label>
-            <div class="btn-group w-100" role="group">
-              <input type="radio" class="btn-check" name="opsiJenis" id="jenisUang" value="Uang" checked onchange="aturTampilanJenis()">
-              <label class="btn btn-outline-success btn-sm" for="jenisUang">💵 Uang Tunai</label>
-
-              <input type="radio" class="btn-check" name="opsiJenis" id="jenisBeras" value="Beras" onchange="aturTampilanJenis()">
-              <label class="btn btn-outline-success btn-sm" for="jenisBeras">🌾 Beras</label>
-            </div>
-          </div>
-
-          <div id="blokUang" class="mb-3">
-            <label class="form-label small fw-semibold mb-1">Nominal Uang (Rp)</label>
-            <div class="d-flex gap-1 mb-2 flex-wrap">
-              <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(5000)">5.000 (1 Mg)</button>
-              <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(10000)">10.000 (2 Mg)</button>
-              <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(15000)">15.000 (3 Mg)</button>
-              <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setUang(20000)">20.000 (4 Mg)</button>
-            </div>
-            <input type="number" id="nominalUang" class="form-control" placeholder="Pilih tombol atau ketik nominal (Rp)" value="" min="0" step="500">
-          </div>
-
-          <div id="blokBeras" class="mb-3 d-none">
-            <label class="form-label small fw-semibold mb-1">Pilih Cepat Jumlah Beras</label>
-            <div class="d-flex gap-1 mb-2 flex-wrap">
-              <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setBeras(1)">1</button>
-              <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setBeras(2)">2</button>
-              <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setBeras(3)">3</button>
-              <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setBeras(4)">4</button>
-            </div>
-            <div class="row g-2">
-              <div class="col-7">
-                <label class="form-label small fw-semibold mb-1">Jumlah Beras</label>
-                <input type="number" id="jumlahBeras" class="form-control" placeholder="Ketik jumlah beras" value="" min="0" step="0.5">
-              </div>
-              <div class="col-5">
-                <label class="form-label small fw-semibold mb-1">Satuan</label>
-                <select id="satuanBeras" class="form-select">
-                  <option value="Gelas/Cangkir">Gelas/Cangkir</option>
-                  <option value="Liter">Liter</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div class="d-grid">
-            <button type="submit" id="btnSimpanLokal" class="btn btn-success btn-action" disabled>
-              💾 SIMPAN SETORAN PERELEK KE HP
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- =======================================================================
-         BAGIAN B: MODUL PETUGAS METER AIR BERSIH (QR AIR, FOTO, OCR, OFFLINE-FIRST)
-         ======================================================================= -->
-    <div id="areaModulAir" class="d-none">
-      <!-- Panel Status Database Pelanggan Air & Antrean Sinkronisasi IndexedDB -->
-      <div class="card card-custom p-3 mb-3" style="border-top: 4px solid #0284c7;">
-        <div class="d-flex justify-content-between align-items-center mb-1">
-          <span class="small fw-bold text-secondary">DATABASE PELANGGAN AIR</span>
-          <span id="statusSinkronAirBadge" class="badge bg-primary">Menyiapkan...</span>
-        </div>
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <span class="small fw-bold text-secondary">ANTREAN METER AIR DI HP</span>
-          <span id="statusAntreanAirBadge" class="badge bg-secondary">0 Data</span>
+          <input type="number" id="nominalUang" class="form-control" placeholder="Pilih tombol atau ketik nominal (Rp)" value="" min="0" step="500">
         </div>
 
-        <div class="mb-2">
-          <label class="form-label small fw-semibold mb-1">🗓️ Periode Pencatatan Meter Air</label>
-          <input type="month" id="periodeAirInput" class="form-control form-control-sm fw-bold" required onchange="simpanPeriodeAirPilihan()">
-          <small class="text-muted" style="font-size: 11px;">Data &amp; foto meteran tersimpan di IndexedDB HP (tetap aman walaupun HP direstart / tanpa kuota).</small>
-        </div>
-
-        <div class="d-grid gap-2 mt-2">
-          <button type="button" id="btnSinkronAirSekarang" class="btn btn-primary btn-sm fw-bold" onclick="sinkronkanAntreanAirKeServer(true)">
-            ☁️ SINKRONISASI SEKARANG KE SPREADSHEET &amp; DRIVE
-          </button>
-          <button type="button" class="btn btn-outline-success btn-sm fw-bold" onclick="kirimRekapAirWhatsApp()">
-            💬 Kirim Rekap Pencatatan Air ke WhatsApp Pengurus
-          </button>
-        </div>
-      </div>
-
-      <!--Langkah 1: Kamera Scanner QR Meter Air (Khusus AIR-RW15-...) -->
-      <div class="card card-custom p-3 mb-3">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <span class="small fw-bold text-primary">1. SCAN QR METER AIR (AIR-RW15-...)</span>
-          <button type="button" class="btn btn-sm btn-outline-primary py-0" onclick="muatUlangDatabaseAir(true)">🔄 Perbarui Pelanggan</button>
-        </div>
-
-        <div class="d-grid gap-2 mb-2">
-          <button type="button" id="btnBukaKameraAir" class="btn btn-primary btn-action-xl" onclick="mulaiScanManualAir()">
-            📷 BUKA KAMERA SCAN QR METER
-          </button>
-          <button type="button" id="btnTutupKameraAir" class="btn btn-danger btn-sm d-none" onclick="hentikanKameraManualAir()">
-            ⏹️ Matikan Kamera QR Air (Hemat Baterai)
-          </button>
-        </div>
-
-        <div id="readerAir" class="mb-3 d-flex align-items-center justify-content-center text-white text-center p-3">
-          <div id="placeholderKameraAir">
-            <div style="font-size: 36px;">💧</div>
-            <small class="text-light opacity-75">Arahkan kamera ke stiker <b>AIR-RW15-...</b> pada meteran pelanggan.<br>(Terpisah dari QR Perelek KK).</small>
+        <div id="blokBeras" class="mb-3 d-none">
+          <label class="form-label small fw-semibold mb-1">Pilih Cepat Jumlah Beras</label>
+          <div class="d-flex gap-1 mb-2 flex-wrap">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setBeras(1)">1</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setBeras(2)">2</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setBeras(3)">3</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setBeras(4)">4</button>
           </div>
-        </div>
-
-        <div id="pesanNotifScannerAir" class="alert d-none py-2 px-3 small mb-2 fw-bold text-center"></div>
-
-        <label class="form-label small fw-semibold mb-1">Atau Cari Manual Pelanggan Air / Kode QR Meter:</label>
-        <input class="form-control form-control-sm mb-1" list="datalistPelangganAir" id="cariManualAirInput" placeholder="Ketik nama pelanggan atau AIR-RW15-..." onchange="pilihDariPencarianAir()">
-        <datalist id="datalistPelangganAir"></datalist>
-      </div>
-
-      <!-- Langkah 2, 3, 4: Identitas Pelanggan, Foto Meteran + OCR, & Simpan Pencatatan -->
-      <div class="card card-custom p-3 mb-3">
-        <span class="small fw-bold text-primary d-block mb-2">2. AMBIL FOTO METER, PERIKSA OCR &amp; SIMPAN</span>
-
-        <form id="formCatatMeterAir" onsubmit="simpanPencatatanAirLokal(event)">
-          <input type="hidden" id="airIdPelanggan" value="">
-          <input type="hidden" id="airIdMeter" value="">
-          <input type="hidden" id="airTarifKhusus" value="REGULER">
-
-          <div class="row g-2 mb-2">
+          <div class="row g-2">
             <div class="col-7">
-              <label class="form-label small fw-semibold mb-1">QR Code Meter Air</label>
-              <input type="text" id="airQrCode" class="form-control form-control-sm bg-light fw-mono fw-bold text-primary" placeholder="AIR-RW15-..." readonly required>
+              <label class="form-label small fw-semibold mb-1">Jumlah Beras</label>
+              <input type="number" id="jumlahBeras" class="form-control" placeholder="Ketik jumlah beras" value="" min="0" step="0.5">
             </div>
             <div class="col-5">
-              <label class="form-label small fw-semibold mb-1">ID Pelanggan</label>
-              <input type="text" id="airKodePlgView" class="form-control form-control-sm bg-light fw-mono" readonly>
+              <label class="form-label small fw-semibold mb-1">Satuan</label>
+              <select id="satuanBeras" class="form-select">
+                <option value="Gelas/Cangkir">Gelas/Cangkir</option>
+                <option value="Liter">Liter</option>
+              </select>
             </div>
           </div>
-
-          <div class="row g-2 mb-2">
-            <div class="col-8">
-              <label class="form-label small fw-semibold mb-1">Nama Pelanggan Air</label>
-              <input type="text" id="airNamaPelanggan" class="form-control form-control-sm bg-light fw-bold" readonly required>
-            </div>
-            <div class="col-4">
-              <label class="form-label small fw-semibold mb-1">RT</label>
-              <input type="text" id="airRtPelanggan" class="form-control form-control-sm bg-light text-center fw-bold" readonly required>
-            </div>
-          </div>
-
-          <div class="p-2 rounded-3 bg-light border mb-3 d-flex justify-content-between align-items-center">
-            <span class="small fw-bold text-secondary">Angka Meter Sebelumnya:</span>
-            <span class="fs-5 fw-bold fw-mono text-dark"><span id="airMeterSebelumnyaLbl">0</span> m³</span>
-            <input type="hidden" id="airMeterSebelumnya" value="0">
-          </div>
-
-          <!-- Tombol Besar Ambil Foto Meteran + OCR -->
-          <div class="mb-3">
-            <label for="inputFotoMeterAir" class="btn btn-warning btn-action-xl w-100 text-dark shadow-sm" style="cursor:pointer;">
-              📸 AMBIL FOTO METER &amp; BACA OCR
-            </label>
-            <input type="file" id="inputFotoMeterAir" accept="image/*" capture="environment" class="d-none" onchange="prosesFotoMeterDanOCR(this)">
-
-            <div id="boxPreviewFotoAir" class="d-none text-center p-2 mt-2 border rounded-3 bg-light">
-              <img id="imgPreviewFotoAir" src="" alt="Bukti Foto Meter" style="max-width:100%; max-height:200px; border-radius:10px; border:2px solid #0284c7;">
-              <div id="statusOCRAir" class="small fw-bold text-primary mt-1"></div>
-            </div>
-          </div>
-
-          <!-- Input & Koreksi Angka Meter Sekarang -->
-          <div class="mb-2">
-            <div class="d-flex justify-content-between align-items-center mb-1">
-              <label class="form-label small fw-bold mb-0" for="airMeterSekarang">Angka Meter Sekarang (m³):</label>
-              <span class="badge bg-info text-dark" id="badgeHasilOCR">OCR: -</span>
-            </div>
-            <input type="number" step="0.01" min="0" id="airMeterSekarang" class="form-control inp-meter-angka" placeholder="0000" oninput="hitungPemakaianAirLive()" required>
-            <div class="form-check mt-1">
-              <input class="form-check-input" type="checkbox" id="chkResetMeterAir" onchange="hitungPemakaianAirLive()">
-              <label class="form-check-label small text-muted" for="chkResetMeterAir">
-                Prosedur Reset / Ganti Meter Baru (Izinkan angka lebih kecil dari meter lalu)
-              </label>
-            </div>
-          </div>
-
-          <!-- Ringkasan Pemakaian m³ & Estimasi Tarif Progresif -->
-          <div class="p-3 rounded-3 border mb-2" style="background:#f0f9ff; border-color:#bae6fd !important;">
-            <div class="d-flex justify-content-between align-items-center">
-              <span class="small fw-bold text-secondary">Pemakaian Air Bulan Ini:</span>
-              <span class="fs-4 fw-bold fw-mono text-primary" id="lblPemakaianAirM3">0 m³</span>
-            </div>
-            <div class="d-flex justify-content-between align-items-center border-top pt-1 mt-1 small">
-              <span class="text-muted">Estimasi Tagihan Progresif:</span>
-              <b class="text-success" id="lblEstimasiTagihanAir">Rp 0</b>
-            </div>
-            <div id="peringatanPemakaianAir" class="alert alert-warning py-1 px-2 mt-2 mb-0 small d-none"></div>
-          </div>
-
-          <div class="mb-2">
-            <input type="text" id="airCatatanPetugas" class="form-control form-control-sm" placeholder="Catatan petugas (opsional, misal: kaca meter bersih / segel aman)...">
-          </div>
-
-          <div class="form-check mb-3 p-2 rounded border bg-white">
-            <input class="form-check-input ms-1 me-2" type="checkbox" id="chkKonfirmasiPetugasAir" required>
-            <label class="form-check-label small fw-bold text-dark" for="chkKonfirmasiPetugasAir">
-              Saya telah memeriksa angka meter sesuai dengan foto asli.
-            </label>
-          </div>
-
-          <div class="d-grid">
-            <button type="submit" id="btnSimpanAirLokal" class="btn btn-primary btn-action-xl" disabled>
-              💾 SIMPAN PENCATATAN METER
-            </button>
-          </div>
-        </form>
-      </div>
-
-      <!-- Daftar Antrean Pencatatan Meter Air di HP -->
-      <div id="cardDaftarAntreanAir" class="card card-custom p-3 d-none">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <span class="small fw-bold text-primary">📋 ANTREAN LOKAL METER AIR (BELUM SINKRON)</span>
-          <span class="badge bg-warning text-dark" id="jmlAntreanAirListBadge">0</span>
         </div>
-        <div id="listAntreanAirHtml" class="small"></div>
-      </div>
-    </div>
 
+        <div class="d-grid">
+          <button type="submit" id="btnSimpanLokal" class="btn btn-success btn-action" disabled>
+            💾 SIMPAN KE HP
+          </button>
+        </div>
+      </form>
+    </div>
   </div>
 
 </div>
@@ -436,131 +198,8 @@
   let daftarKK = [];
   let riwayatPerelek = [];
   let petugasAktif = "";
-  let rolePetugasAktif = "Petugas";
-  let wilayahTugasAktif = "";
   let html5QrCode = null;
-  let html5QrCodeAir = null;
   let audioCtx = null;
-
-  // Variabel Khusus Modul Air Bersih (Offline-First IndexedDB)
-  let daftarPelangganAir = [];
-  let daftarPencatatanAirServer = [];
-  let daftarTarifAir = [];
-  let batasWajarAirM3 = 45;
-  let fotoMeterBase64Aktif = "";
-  let angkaOCRAktif = "";
-  let sedangSinkronAir = false;
-
-  // =========================================================================
-  // DATABASE LOKAL INDEXEDDB (UNTUK PELANGGAN AIR, FOTO METER, & ANTREAN SYNC)
-  // Data tetap tersimpan permanen meskipun aplikasi ditutup atau HP direstart
-  // =========================================================================
-  const IDB_NAME = 'RW15_AirBersih_OfflineDB';
-  const IDB_VERSION = 1;
-
-  function openAirIDB() {
-    return new Promise((resolve, reject) => {
-      if (!window.indexedDB) {
-        reject(new Error("IndexedDB tidak didukung"));
-        return;
-      }
-      const req = window.indexedDB.open(IDB_NAME, IDB_VERSION);
-      req.onupgradeneeded = (ev) => {
-        const db = ev.target.result;
-        if (!db.objectStoreNames.contains('pelanggan')) {
-          db.createObjectStore('pelanggan', { keyPath: 'idPelanggan' });
-        }
-        if (!db.objectStoreNames.contains('meta')) {
-          db.createObjectStore('meta', { keyPath: 'key' });
-        }
-        if (!db.objectStoreNames.contains('syncQueue')) {
-          db.createObjectStore('syncQueue', { keyPath: 'idTransaksi' });
-        }
-      };
-      req.onsuccess = (ev) => resolve(ev.target.result);
-      req.onerror = (ev) => reject(ev.target.error);
-    });
-  }
-
-  async function simpanMasterAirKeIDB(pelangganArr, catatArr, tarifArr, cfgObj) {
-    try {
-      localStorage.setItem('CACHE_PELANGGAN_AIR', JSON.stringify(pelangganArr || []));
-      localStorage.setItem('CACHE_RIWAYAT_CATAT_AIR', JSON.stringify(catatArr || []));
-      localStorage.setItem('CACHE_TARIF_AIR', JSON.stringify(tarifArr || []));
-      const db = await openAirIDB();
-      await new Promise((resolve) => {
-        const tx = db.transaction(['pelanggan', 'meta'], 'readwrite');
-        const stPlg = tx.objectStore('pelanggan');
-        stPlg.clear();
-        (pelangganArr || []).forEach(p => {
-          if (p.idPelanggan) stPlg.put(p);
-        });
-        const stMeta = tx.objectStore('meta');
-        stMeta.put({
-          key: 'masterAirSnapshot',
-          pelanggan: pelangganArr || [],
-          pencatatan: catatArr || [],
-          tarif: tarifArr || [],
-          pengaturan: cfgObj || {},
-          updatedAt: new Date().toISOString()
-        });
-        tx.oncomplete = () => resolve(true);
-        tx.onerror = () => resolve(false);
-      });
-    } catch (e) {}
-  }
-
-  async function muatMasterAirDariIDB() {
-    try {
-      const db = await openAirIDB();
-      return await new Promise((resolve) => {
-        const tx = db.transaction(['meta'], 'readonly');
-        const req = tx.objectStore('meta').get('masterAirSnapshot');
-        req.onsuccess = () => resolve(req.result || null);
-        req.onerror = () => resolve(null);
-      });
-    } catch (e) {
-      return null;
-    }
-  }
-
-  async function tambahAntreanAirIDB(record) {
-    const db = await openAirIDB();
-    return await new Promise((resolve, reject) => {
-      const tx = db.transaction(['syncQueue'], 'readwrite');
-      tx.objectStore('syncQueue').put(record);
-      tx.oncomplete = () => resolve(true);
-      tx.onerror = (err) => reject(err);
-    });
-  }
-
-  async function ambilSemuaAntreanAirIDB() {
-    try {
-      const db = await openAirIDB();
-      return await new Promise((resolve) => {
-        const tx = db.transaction(['syncQueue'], 'readonly');
-        const req = tx.objectStore('syncQueue').getAll();
-        req.onsuccess = () => resolve(req.result || []);
-        req.onerror = () => resolve([]);
-      });
-    } catch (e) {
-      return [];
-    }
-  }
-
-  async function hapusAntreanAirIDB(idTransaksi) {
-    try {
-      const db = await openAirIDB();
-      return await new Promise((resolve) => {
-        const tx = db.transaction(['syncQueue'], 'readwrite');
-        tx.objectStore('syncQueue').delete(idTransaksi);
-        tx.oncomplete = () => resolve(true);
-        tx.onerror = () => resolve(false);
-      });
-    } catch (e) {
-      return false;
-    }
-  }
 
   // ==========================================
   // FUNGSI NOTIFIKASI SUARA (NADA & BICARA)
@@ -578,6 +217,7 @@
       const now = audioCtx.currentTime;
 
       if (tipe === 'sukses') {
+        // Nada Chime 2 Tingkatan (C5 -> G5)
         const osc1 = audioCtx.createOscillator();
         const gain1 = audioCtx.createGain();
         osc1.type = 'sine';
@@ -642,9 +282,6 @@
     }
   }
 
-  // ==========================================
-  // INISIALISASI SAAT APLIKASI DIBUKA
-  // ==========================================
   window.addEventListener('DOMContentLoaded', () => {
     const savedTanggal = localStorage.getItem('SABTU_PILIHAN_PETUGAS');
     if (savedTanggal) {
@@ -658,71 +295,14 @@
       localStorage.setItem('SABTU_PILIHAN_PETUGAS', defaultSabtu);
     }
 
-    const savedPeriodeAir = localStorage.getItem('PERIODE_AIR_PILIHAN_PETUGAS') || new Date().toISOString().substring(0, 7);
-    document.getElementById('periodeAirInput').value = savedPeriodeAir;
-
     const savedLogin = localStorage.getItem('PETUGAS_AKTIF') || sessionStorage.getItem('PETUGAS_AKTIF');
-    const savedRole = localStorage.getItem('ROLE_PETUGAS_AKTIF') || 'Petugas';
-    const savedWil = localStorage.getItem('WILAYAH_PETUGAS_AKTIF') || '';
     if (savedLogin) {
       petugasAktif = savedLogin;
-      rolePetugasAktif = savedRole;
-      wilayahTugasAktif = savedWil;
       localStorage.setItem('PETUGAS_AKTIF', petugasAktif);
       bukaLayarUtama();
     }
     updateStatusAntrean();
-    updateStatusAntreanAir();
-    perbaruiBadgeKoneksi();
   });
-
-  window.addEventListener('online', () => {
-    perbaruiBadgeKoneksi();
-    // Sinkronisasi otomatis antrean Meter Air ketika sinyal internet kembali tersedia
-    sinkronkanAntreanAirKeServer(false);
-  });
-
-  window.addEventListener('offline', () => {
-    perbaruiBadgeKoneksi();
-  });
-
-  function perbaruiBadgeKoneksi() {
-    const el = document.getElementById('badgeStatusKoneksi');
-    if (!el) return;
-    if (navigator.onLine !== false) {
-      el.className = 'badge bg-light text-success fw-bold';
-      el.innerText = '🟢 ONLINE';
-    } else {
-      el.className = 'badge bg-warning text-dark fw-bold';
-      el.innerText = '✈️ OFFLINE';
-    }
-  }
-
-  function gantiModeLapangan(mode) {
-    hentikanKameraManual();
-    hentikanKameraManualAir();
-    localStorage.setItem('MODE_LAPANGAN_TERAKHIR', mode);
-
-    const isAir = (mode === 'air');
-    document.getElementById('areaModulPerelek').classList.toggle('d-none', isAir);
-    document.getElementById('areaModulAir').classList.toggle('d-none', !isAir);
-
-    document.getElementById('btnTabPerelek').className = 'nav-mode-btn ' + (!isAir ? 'active-perelek' : '');
-    document.getElementById('btnTabAir').className = 'nav-mode-btn ' + (isAir ? 'active-air' : '');
-
-    const hdr = document.getElementById('headerAppCard');
-    const jdl = document.getElementById('judulHeaderMode');
-    const sub = document.getElementById('subJudulHeaderMode');
-    if (isAir) {
-      hdr.className = 'card card-custom p-3 mb-3 bg-primary text-white text-center';
-      jdl.innerText = 'PETUGAS METER AIR RW 15';
-      sub.innerText = 'Scan QR Meter (AIR-RW15-...) • Foto • OCR • Offline-First';
-    } else {
-      hdr.className = 'card card-custom p-3 mb-3 bg-success text-white text-center';
-      jdl.innerText = 'PETUGAS PERELEK RW 15';
-      sub.innerText = 'Penarikan Perelek Warga Khusus Hari Sabtu';
-    }
-  }
 
   function formatYYYYMMDD(d) {
     const y = d.getFullYear();
@@ -739,17 +319,6 @@
       const qrSekarang = document.getElementById('qrCode').value;
       if (qrSekarang) {
         prosesKodeQR(qrSekarang);
-      }
-    }
-  }
-
-  function simpanPeriodeAirPilihan() {
-    const val = document.getElementById('periodeAirInput').value;
-    if (val) {
-      localStorage.setItem('PERIODE_AIR_PILIHAN_PETUGAS', val);
-      const qrAirSekarang = document.getElementById('airQrCode').value;
-      if (qrAirSekarang) {
-        prosesKodeQRAir(qrAirSekarang);
       }
     }
   }
@@ -783,11 +352,7 @@
 
       if (json.status === 'success' && json.data && json.data.success) {
         petugasAktif = json.data.user.nama || uInput;
-        rolePetugasAktif = json.data.user.role || 'Petugas';
-        wilayahTugasAktif = json.data.user.wargaLink || '';
         localStorage.setItem('PETUGAS_AKTIF', petugasAktif);
-        localStorage.setItem('ROLE_PETUGAS_AKTIF', rolePetugasAktif);
-        localStorage.setItem('WILAYAH_PETUGAS_AKTIF', wilayahTugasAktif);
         
         if (json.data.dashboard) {
           simpanDataDashboardDariServer(json.data.dashboard);
@@ -830,12 +395,11 @@
     }
   }
 
-  async function bukaLayarUtama() {
+  function bukaLayarUtama() {
     document.getElementById('layarLogin').classList.add('d-none');
     document.getElementById('layarApp').classList.remove('d-none');
     document.getElementById('infoPetugasLogin').innerText = "Petugas: " + petugasAktif;
 
-    // 1. Pulihkan Cache Perelek
     const cacheKK = localStorage.getItem('CACHE_DAFTAR_KK');
     const cachePerelek = localStorage.getItem('CACHE_RIWAYAT_PERELEK');
     if (cacheKK) {
@@ -847,49 +411,15 @@
       badge.innerText = `✅ Siap (${daftarKK.length} KK • ${riwayatPerelek.length} Setoran)`;
     }
 
-    // 2. Pulihkan Cache Pelanggan Air Bersih dari IndexedDB / localStorage
-    const idbSnap = await muatMasterAirDariIDB();
-    if (idbSnap && idbSnap.pelanggan && idbSnap.pelanggan.length > 0) {
-      daftarPelangganAir = idbSnap.pelanggan;
-      daftarPencatatanAirServer = idbSnap.pencatatan || [];
-      daftarTarifAir = idbSnap.tarif || [];
-    } else {
-      const cPlgAir = localStorage.getItem('CACHE_PELANGGAN_AIR');
-      const cCatAir = localStorage.getItem('CACHE_RIWAYAT_CATAT_AIR');
-      if (cPlgAir) daftarPelangganAir = JSON.parse(cPlgAir);
-      if (cCatAir) daftarPencatatanAirServer = JSON.parse(cCatAir);
-    }
-    if (daftarPelangganAir.length > 0) {
-      isiDatalistPelangganAir();
-      const badgeAir = document.getElementById('statusSinkronAirBadge');
-      badgeAir.className = 'badge bg-primary';
-      badgeAir.innerText = `✅ Siap Offline (${daftarPelangganAir.length} Pelanggan Air)`;
-    }
-
-    // Pilih tab default sesuai role atau mode terakhir
-    const lastMode = localStorage.getItem('MODE_LAPANGAN_TERAKHIR');
-    if (lastMode === 'air' || String(rolePetugasAktif).toLowerCase().indexOf('air') !== -1) {
-      gantiModeLapangan('air');
-    } else {
-      gantiModeLapangan('perelek');
-    }
-
     muatUlangDatabase(false);
-    muatUlangDatabaseAir(false);
-    sinkronkanAntreanAirKeServer(false);
   }
 
   function logoutApp() {
-    hentikanKameraManual();
-    hentikanKameraManualAir();
     localStorage.removeItem('PETUGAS_AKTIF');
     sessionStorage.removeItem('PETUGAS_AKTIF');
     location.reload();
   }
 
-  // =========================================================================
-  // FUNGSI MODUL 1: SETORAN PERELEK WARGA (PERTAHANKAN 100% FUNGSI LAMA)
-  // =========================================================================
   async function muatUlangDatabase(tampilkanPesanManual) {
     const badge = document.getElementById('statusSinkronBadge');
     if (tampilkanPesanManual || daftarKK.length === 0) {
@@ -967,7 +497,6 @@
   }
 
   function mulaiScanManual() {
-    hentikanKameraManualAir();
     document.getElementById('reader').innerHTML = '';
     html5QrCode = new Html5Qrcode("reader");
 
@@ -1015,7 +544,7 @@
     document.getElementById('reader').innerHTML = `
       <div id="placeholderKamera" class="p-3 text-center text-white">
         <div style="font-size: 36px;">📷</div>
-        <small class="text-light opacity-75">Kamera dimatikan untuk menghemat baterai.<br>Klik <b>Buka Kamera Scan QR Perelek</b> saat tiba di rumah berikutnya.</small>
+        <small class="text-light opacity-75">Kamera dimatikan untuk menghemat baterai.<br>Klik <b>Buka Kamera Scan QR</b> saat tiba di rumah berikutnya.</small>
       </div>`;
   }
 
@@ -1054,12 +583,6 @@
 
   function prosesKodeQR(inputStr) {
     const bersih = String(inputStr).trim().toUpperCase();
-    if (bersih.startsWith('AIR-')) {
-      putarNadaNotifikasi('gagal');
-      tampilkanNotifScanner('⚠️ QR tersebut adalah QR Meter Air Bersih! Silakan pindah ke tab "2. METER AIR BERSIH".', 'warning');
-      return;
-    }
-
     const cocok = daftarKK.find(k => String(k.qr).trim().toUpperCase() === bersih || String(k.nama).trim().toUpperCase() === bersih);
 
     if (cocok) {
@@ -1112,6 +635,7 @@
     const jns = document.querySelector('input[name="opsiJenis"]:checked').value;
     document.getElementById('blokUang').classList.toggle('d-none', jns !== 'Uang');
     document.getElementById('blokBeras').classList.toggle('d-none', jns !== 'Beras');
+    // Kosongkan kolom uang dan beras setiap kali ganti jenis setoran
     document.getElementById('nominalUang').value = '';
     document.getElementById('jumlahBeras').value = '';
   }
@@ -1145,6 +669,7 @@
     antrean.push(formPayload);
     localStorage.setItem('SETORAN_LOKAL_HP', JSON.stringify(antrean));
 
+    // Mainkan bunyi notifikasi & suara bicara saat berhasil disimpan
     putarNadaNotifikasi('sukses');
     if (jns === 'Uang') {
       ucapkanSuaraNotifikasi(`Setoran uang ${formPayload.nominalUang} rupiah dari ${formPayload.kepalaKeluarga} berhasil disimpan.`);
@@ -1165,6 +690,7 @@
     badge.className = antrean.length > 0 ? 'badge bg-warning text-dark' : 'badge bg-secondary';
   }
 
+  // UPLOAD BERURUTAN SESUAI FORMAT JSON Code.gs
   async function uploadDataKeSpreadsheet() {
     let antrean = JSON.parse(localStorage.getItem('SETORAN_LOKAL_HP') || '[]');
     if (antrean.length === 0) {
@@ -1269,604 +795,22 @@
     document.getElementById('qrCode').value = '';
     document.getElementById('kepalaKeluarga').value = '';
     document.getElementById('rtKK').value = '';
+    // Mengosongkan kembali kolom nilai uang dan beras setelah tersimpan
     document.getElementById('nominalUang').value = '';
     document.getElementById('jumlahBeras').value = '';
     document.getElementById('btnSimpanLokal').disabled = true;
     document.getElementById('cariManualInput').value = '';
   }
 
-  function tampilkanNotifScanner(pesan, tipe) {
+ function tampilkanNotifScanner(pesan, tipe) {
     const box = document.getElementById('pesanNotifScanner');
-    box.className = 'alert alert-' + tipe + ' py-2 px-3 small mb-2 fw-bold text-center';
-    box.innerText = pesan;
-    box.classList.remove('d-none');
-  }
-
-  // =========================================================================
-  // FUNGSI MODUL 2: PENCATATAN METER AIR BERSIH (QR AIR, FOTO, OCR, OFFLINE)
-  // =========================================================================
-  async function muatUlangDatabaseAir(tampilkanPesanManual) {
-    const badge = document.getElementById('statusSinkronAirBadge');
-    if (tampilkanPesanManual || daftarPelangganAir.length === 0) {
-      badge.className = 'badge bg-warning text-dark';
-      badge.innerText = 'Menyinkronkan...';
-    }
-
-    try {
-      const res = await fetch(GAS_EXEC_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          action: 'getDashboardAir',
-          args: [{ roleUser: rolePetugasAktif || 'Petugas Air', wilayahTugas: wilayahTugasAktif || '' }]
-        })
-      });
-      const json = await res.json();
-
-      if (json.status === 'success' && json.data) {
-        const dAir = json.data;
-        daftarPelangganAir = (dAir.pelangganList || []).map(r => {
-          const c = r.cells || [];
-          return {
-            idPelanggan: c[0] || '',
-            idMeter: c[1] || '',
-            nama: c[2] || '',
-            noKK: c[3] || '-',
-            rt: c[4] || 'RT 001',
-            alamat: c[5] || '',
-            noHP: c[6] || '-',
-            noSeri: c[7] || '-',
-            meterAwal: Number(c[9] || 0),
-            meterTerakhir: Number(c[10] || 0),
-            status: c[11] || 'Aktif',
-            qrCode: c[12] || '',
-            tarifKhusus: c[13] || 'REGULER'
-          };
-        }).filter(p => p.status === 'Aktif');
-
-        daftarPencatatanAirServer = (dAir.pencatatanList || []).map(r => {
-          const c = r.cells || [];
-          return {
-            idTransaksi: c[0] || '',
-            periode: c[1] || '',
-            idPelanggan: c[3] || '',
-            meterSekarang: Number(c[8] || 0)
-          };
-        });
-
-        daftarTarifAir = (dAir.tarifList || []).map(r => {
-          const c = r.cells || [];
-          return {
-            kode: String(c[1] || '').toUpperCase(),
-            nama: c[2] || '',
-            min: Number(c[3] || 0),
-            max: Number(c[4] || 0),
-            tarif: Number(c[5] || 0),
-            abonemen: Number(c[6] || 5000),
-            admin: Number(c[7] || 2500)
-          };
-        });
-
-        if (dAir.pengaturan) {
-          batasWajarAirM3 = Number(dAir.pengaturan.BATAS_WAJAR_M3 || 45);
-          if (!localStorage.getItem('PERIODE_AIR_PILIHAN_PETUGAS') && dAir.pengaturan.PERIODE_AKTIF) {
-            document.getElementById('periodeAirInput').value = dAir.pengaturan.PERIODE_AKTIF;
-          }
-        }
-
-        await simpanMasterAirKeIDB(daftarPelangganAir, daftarPencatatanAirServer, daftarTarifAir, dAir.pengaturan || {});
-        isiDatalistPelangganAir();
-
-        badge.className = 'badge bg-primary';
-        badge.innerText = `✅ Tersinkron (${daftarPelangganAir.length} Pelanggan Air)`;
-
-        if (tampilkanPesanManual) {
-          tampilkanNotifScannerAir('✨ Data Pelanggan & Meter Air berhasil diperbarui!', 'success');
-        }
-      }
-    } catch (err) {
-      if (daftarPelangganAir.length > 0) {
-        badge.className = 'badge bg-secondary';
-        badge.innerText = `💾 Mode Offline (${daftarPelangganAir.length} Pelanggan Tersimpan)`;
-      } else {
-        badge.className = 'badge bg-danger';
-        badge.innerText = 'Gagal Sinkron (Cek Internet)';
-      }
-    }
-  }
-
-  function isiDatalistPelangganAir() {
-    const dl = document.getElementById('datalistPelangganAir');
-    if (!dl) return;
-    dl.innerHTML = '';
-    daftarPelangganAir.forEach(p => {
-      const opt = document.createElement('option');
-      opt.value = p.qrCode;
-      opt.label = `${p.nama} (${p.rt} • Meter Lalu: ${p.meterTerakhir} m³)`;
-      dl.appendChild(opt);
-    });
-  }
-
-  function mulaiScanManualAir() {
-    hentikanKameraManual();
-    document.getElementById('readerAir').innerHTML = '';
-    html5QrCodeAir = new Html5Qrcode("readerAir");
-
-    document.getElementById('btnBukaKameraAir').classList.add('d-none');
-    document.getElementById('btnTutupKameraAir').classList.remove('d-none');
-
-    const config = { fps: 12, qrbox: { width: 220, height: 220 } };
-    html5QrCodeAir.start(
-      { facingMode: "environment" },
-      config,
-      (decodedText) => {
-        hentikanKameraManualAir();
-        prosesKodeQRAir(decodedText);
-      },
-      () => {}
-    ).catch(() => {
-      html5QrCodeAir.start(
-        { facingMode: "user" },
-        config,
-        (decodedText) => {
-          hentikanKameraManualAir();
-          prosesKodeQRAir(decodedText);
-        },
-        () => {}
-      );
-    });
-  }
-
-  function hentikanKameraManualAir() {
-    if (html5QrCodeAir && html5QrCodeAir.isScanning) {
-      html5QrCodeAir.stop().then(() => {
-        tampilkanPlaceholderKameraAir();
-      }).catch(() => {
-        tampilkanPlaceholderKameraAir();
-      });
-    } else {
-      tampilkanPlaceholderKameraAir();
-    }
-  }
-
-  function tampilkanPlaceholderKameraAir() {
-    document.getElementById('btnBukaKameraAir').classList.remove('d-none');
-    document.getElementById('btnTutupKameraAir').classList.add('d-none');
-    document.getElementById('readerAir').innerHTML = `
-      <div id="placeholderKameraAir" class="p-3 text-center text-white">
-        <div style="font-size: 36px;">💧</div>
-        <small class="text-light opacity-75">Kamera dimatikan untuk menghemat baterai.<br>Klik <b>Buka Kamera Scan QR Meter</b> saat tiba di rumah pelanggan berikutnya.</small>
-      </div>`;
-  }
-
-  function pilihDariPencarianAir() {
-    const val = document.getElementById('cariManualAirInput').value.trim();
-    if (val) {
-      hentikanKameraManualAir();
-      prosesKodeQRAir(val);
-    }
-  }
-
-  async function prosesKodeQRAir(inputStr) {
-    const bersih = String(inputStr).trim().toUpperCase();
-
-    // Cegah penggunaan QR Perelek (PRK-...) untuk pencatatan air
-    if (bersih.startsWith('PRK-')) {
-      resetFormAir();
-      putarNadaNotifikasi('gagal');
-      tampilkanNotifScannerAir('❌ DITOLAK: QR yang dipindai adalah QR Perelek KK (PRK-...). Gunakan Stiker QR Meter Air (AIR-RW15-...)!', 'danger');
-      return;
-    }
-
-    const cocok = daftarPelangganAir.find(p =>
-      String(p.qrCode).trim().toUpperCase() === bersih ||
-      String(p.idPelanggan).trim().toUpperCase() === bersih ||
-      String(p.nama).trim().toUpperCase() === bersih
-    );
-
-    if (!cocok) {
-      resetFormAir();
-      putarNadaNotifikasi('gagal');
-      tampilkanNotifScannerAir('❌ DITOLAK: Pelanggan Air / QR Meter tidak ditemukan di database Air_Pelanggan!', 'danger');
-      return;
-    }
-
-    const periodeTarget = document.getElementById('periodeAirInput').value;
-    const sudahCatatServer = daftarPencatatanAirServer.some(c =>
-      String(c.idPelanggan).toUpperCase() === String(cocok.idPelanggan).toUpperCase() &&
-      String(c.periode) === periodeTarget
-    );
-
-    const antreanAirLokal = await ambilSemuaAntreanAirIDB();
-    const sudahCatatLokal = antreanAirLokal.some(c =>
-      String(c.idPelanggan).toUpperCase() === String(cocok.idPelanggan).toUpperCase() &&
-      String(c.periode) === periodeTarget
-    );
-
-    document.getElementById('airIdPelanggan').value = cocok.idPelanggan;
-    document.getElementById('airIdMeter').value = cocok.idMeter;
-    document.getElementById('airTarifKhusus').value = cocok.tarifKhusus || 'REGULER';
-    document.getElementById('airQrCode').value = cocok.qrCode;
-    document.getElementById('airKodePlgView').value = cocok.idPelanggan;
-    document.getElementById('airNamaPelanggan').value = cocok.nama;
-    document.getElementById('airRtPelanggan').value = cocok.rt;
-    document.getElementById('airMeterSebelumnya').value = cocok.meterTerakhir;
-    document.getElementById('airMeterSebelumnyaLbl').innerText = cocok.meterTerakhir;
-
-    if (sudahCatatServer || sudahCatatLokal) {
-      document.getElementById('btnSimpanAirLokal').disabled = true;
-      putarNadaNotifikasi('gagal');
-      tampilkanNotifScannerAir(`❌ DITOLAK: Meter air ${cocok.nama} sudah dicatat pada periode ${periodeTarget}!`, 'danger');
-    } else {
-      document.getElementById('btnSimpanAirLokal').disabled = false;
-      putarNadaNotifikasi('scan');
-      tampilkanNotifScannerAir(`✅ Pelanggan ditemukan: ${cocok.nama} (Meter Lalu: ${cocok.meterTerakhir} m³). Silakan Ambil Foto Meter.`, 'success');
-    }
-  }
-
-  function prosesFotoMeterDanOCR(inp) {
-    if (!inp.files || !inp.files[0]) return;
-    const file = inp.files[0];
-    const box = document.getElementById('boxPreviewFotoAir');
-    const imgEl = document.getElementById('imgPreviewFotoAir');
-    const stOcr = document.getElementById('statusOCRAir');
-    const bdgOcr = document.getElementById('badgeHasilOCR');
-
-    box.classList.remove('d-none');
-    stOcr.innerText = '⏳ Mengompresi foto & membaca angka meter dengan OCR...';
-
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const scale = Math.min(1, 840 / Math.max(img.width, img.height));
-      const cw = Math.max(240, Math.round(img.width * scale));
-      const ch = Math.max(240, Math.round(img.height * scale));
-      const cv = document.createElement('canvas');
-      cv.width = cw;
-      cv.height = ch;
-      const ctx = cv.getContext('2d');
-      ctx.drawImage(img, 0, 0, cw, ch);
-
-      fotoMeterBase64Aktif = cv.toDataURL('image/jpeg', 0.74);
-      imgEl.src = fotoMeterBase64Aktif;
-
-      // Potong area tengah foto meter untuk meningkatkan akurasi OCR
-      const cvCrop = document.createElement('canvas');
-      const cropW = Math.round(cw * 0.8);
-      const cropH = Math.round(ch * 0.45);
-      cvCrop.width = cropW;
-      cvCrop.height = cropH;
-      cvCrop.getContext('2d').drawImage(cv, Math.round((cw - cropW) / 2), Math.round((ch - cropH) / 2), cropW, cropH, 0, 0, cropW, cropH);
-
-      if (typeof Tesseract !== 'undefined' && Tesseract.recognize) {
-        Tesseract.recognize(cvCrop.toDataURL('image/png'), 'eng', {
-          tessedit_char_whitelist: '0123456789'
-        }).then(res => {
-          const digits = ((res && res.data && res.data.text) || '').replace(/[^0-9]/g, '');
-          if (digits.length > 0) {
-            const parsed = parseInt(digits.substring(0, 6), 10);
-            if (!isNaN(parsed)) {
-              angkaOCRAktif = String(parsed);
-              const inpNow = document.getElementById('airMeterSekarang');
-              if (!inpNow.value) inpNow.value = angkaOCRAktif;
-              bdgOcr.innerText = 'OCR: ' + angkaOCRAktif;
-              stOcr.innerText = `✨ Hasil OCR: ${angkaOCRAktif}. Silakan periksa & koreksi jika perlu.`;
-              hitungPemakaianAirLive();
-              return;
-            }
-          }
-          bdgOcr.innerText = 'OCR: Manual';
-          stOcr.innerText = '📸 Foto bukti tersimpan. Silakan ketik angka meter secara manual di bawah.';
-        }).catch(() => {
-          bdgOcr.innerText = 'OCR Offline (Manual)';
-          stOcr.innerText = '📸 Foto bukti tersimpan di HP. Silakan ketik angka meter secara manual.';
-        });
-      } else {
-        bdgOcr.innerText = 'Input Manual';
-        stOcr.innerText = '📸 Foto bukti meteran berhasil disimpan.';
-      }
-    };
-    img.src = url;
-  }
-
-  function hitungEstimasiTarifProgresifLokal(pakaiM3, katKhusus) {
-    const pakai = Math.max(0, Number(pakaiM3 || 0));
-    let tiers = [
-      { min: 0, max: 10, tarif: 2000, abonemen: 5000, admin: 2500 },
-      { min: 11, max: 20, tarif: 2500, abonemen: 5000, admin: 2500 },
-      { min: 21, max: 30, tarif: 3000, abonemen: 5000, admin: 2500 },
-      { min: 31, max: 999999, tarif: 3500, abonemen: 5000, admin: 2500 }
-    ];
-    if (daftarTarifAir.length > 0) {
-      const filtered = daftarTarifAir.filter(t => katKhusus === 'SOSIAL' ? t.kode === 'SOSIAL' : t.kode !== 'SOSIAL');
-      if (filtered.length > 0) {
-        filtered.sort((a, b) => a.min - b.min);
-        tiers = filtered;
-      }
-    }
-    let sisa = pakai;
-    let prevMax = 0;
-    let subPakai = 0;
-    for (let i = 0; i < tiers.length; i++) {
-      if (sisa <= 0 && i > 0) break;
-      const cap = (i === 0) ? tiers[i].max : (tiers[i].max - prevMax);
-      const vol = (i === tiers.length - 1) ? sisa : Math.min(sisa, cap);
-      subPakai += Math.round(vol * tiers[i].tarif);
-      sisa = Math.max(0, +(sisa - vol).toFixed(2));
-      prevMax = tiers[i].max;
-    }
-    const beban = (tiers[0] ? (tiers[0].abonemen + tiers[0].admin) : 7500);
-    return subPakai + beban;
-  }
-
-  function hitungPemakaianAirLive() {
-    const prev = Number(document.getElementById('airMeterSebelumnya').value || 0);
-    const rawNow = document.getElementById('airMeterSekarang').value;
-    const nowVal = Number(rawNow || 0);
-    const isReset = document.getElementById('chkResetMeterAir').checked;
-    const kat = document.getElementById('airTarifKhusus').value || 'REGULER';
-    const warnEl = document.getElementById('peringatanPemakaianAir');
-
-    if (rawNow === '') {
-      document.getElementById('lblPemakaianAirM3').innerText = '0 m³';
-      document.getElementById('lblEstimasiTagihanAir').innerText = 'Rp 0';
-      warnEl.classList.add('d-none');
-      return;
-    }
-
-    if (!isReset && nowVal < prev) {
-      document.getElementById('lblPemakaianAirM3').innerText = 'ERROR';
-      document.getElementById('lblEstimasiTagihanAir').innerText = 'Rp 0';
-      warnEl.className = 'alert alert-danger py-1 px-2 mt-2 mb-0 small';
-      warnEl.innerText = `⚠️ Angka meter sekarang (${nowVal}) tidak boleh lebih kecil dari angka sebelumnya (${prev}), kecuali centang Reset Meter!`;
-      return;
-    }
-
-    const pakai = isReset ? Math.max(0, nowVal) : +(nowVal - prev).toFixed(2);
-    const estRp = hitungEstimasiTarifProgresifLokal(pakai, kat);
-    document.getElementById('lblPemakaianAirM3').innerText = `${pakai} m³`;
-    document.getElementById('lblEstimasiTagihanAir').innerText = `Rp ${estRp.toLocaleString('id-ID')}`;
-
-    if (pakai > batasWajarAirM3) {
-      warnEl.className = 'alert alert-warning py-1 px-2 mt-2 mb-0 small';
-      warnEl.innerText = `⚠️ Peringatan Pemakaian Tidak Wajar: ${pakai} m³ (Melebihi ${batasWajarAirM3} m³). Periksa kembali angka meter atau kebocoran pipa!`;
-    } else {
-      warnEl.classList.add('d-none');
-    }
-  }
-
-  async function simpanPencatatanAirLokal(e) {
-    e.preventDefault();
-    const idPlg = document.getElementById('airIdPelanggan').value;
-    if (!idPlg) {
-      putarNadaNotifikasi('gagal');
-      alert("Silakan scan QR Meter Air atau pilih pelanggan terlebih dahulu!");
-      return;
-    }
-
-    const prev = Number(document.getElementById('airMeterSebelumnya').value || 0);
-    const nowVal = Number(document.getElementById('airMeterSekarang').value || 0);
-    const isReset = document.getElementById('chkResetMeterAir').checked;
-
-    if (!isReset && nowVal < prev) {
-      putarNadaNotifikasi('gagal');
-      alert(`Angka meter sekarang (${nowVal} m³) tidak boleh lebih kecil dari angka sebelumnya (${prev} m³)!`);
-      return;
-    }
-
-    if (!fotoMeterBase64Aktif) {
-      putarNadaNotifikasi('gagal');
-      alert("Wajib mengambil Foto Angka Meteran terlebih dahulu sebagai bukti!");
-      return;
-    }
-
-    const pakai = isReset ? Math.max(0, nowVal) : +(nowVal - prev).toFixed(2);
-    const nowDt = new Date();
-    const waktuStr = `${formatYYYYMMDD(nowDt)} ${String(nowDt.getHours()).padStart(2,'0')}:${String(nowDt.getMinutes()).padStart(2,'0')}:${String(nowDt.getSeconds()).padStart(2,'0')}`;
-    const idTrx = `CAT-AIR-${nowDt.getTime()}-${Math.floor(100 + Math.random() * 899)}`;
-
-    const payloadAir = {
-      idTransaksi: idTrx,
-      periode: document.getElementById('periodeAirInput').value,
-      waktuCatat: waktuStr,
-      idPelanggan: idPlg,
-      idMeter: document.getElementById('airIdMeter').value,
-      qrCode: document.getElementById('airQrCode').value,
-      namaPelanggan: document.getElementById('airNamaPelanggan').value,
-      rt: document.getElementById('airRtPelanggan').value,
-      meterSebelumnya: prev,
-      meterSekarang: nowVal,
-      pemakaianM3: pakai,
-      resetMeter: isReset,
-      angkaOCR: angkaOCRAktif || String(nowVal),
-      base64Foto: fotoMeterBase64Aktif,
-      mimeTypeFoto: 'image/jpeg',
-      petugas: petugasAktif,
-      catatan: document.getElementById('airCatatanPetugas').value || '-',
-      roleUser: rolePetugasAktif || 'Petugas Air'
-    };
-
-    await tambahAntreanAirIDB(payloadAir);
-
-    // Perbarui angka meter terakhir di memori lokal agar konsisten saat offline
-    const idxPlg = daftarPelangganAir.findIndex(p => p.idPelanggan === idPlg);
-    if (idxPlg !== -1) {
-      daftarPelangganAir[idxPlg].meterTerakhir = nowVal;
-      await simpanMasterAirKeIDB(daftarPelangganAir, daftarPencatatanAirServer, daftarTarifAir, {});
-      isiDatalistPelangganAir();
-    }
-
-    putarNadaNotifikasi('sukses');
-    ucapkanSuaraNotifikasi(`Pencatatan meter air ${payloadAir.namaPelanggan}, pemakaian ${pakai} meter kubik berhasil disimpan.`);
-    tampilkanNotifScannerAir(`💾 Pencatatan meter ${payloadAir.namaPelanggan} (${pakai} m³) + Foto tersimpan aman di HP!`, 'success');
-
-    await updateStatusAntreanAir();
-    resetFormAir();
-
-    // Jika sedang online, langsung coba sinkronisasi otomatis ke Spreadsheet & Drive
-    if (navigator.onLine !== false) {
-      sinkronkanAntreanAirKeServer(false);
-    }
-  }
-
-  async function updateStatusAntreanAir() {
-    const antrean = await ambilSemuaAntreanAirIDB();
-    const badge = document.getElementById('statusAntreanAirBadge');
-    const cardList = document.getElementById('cardDaftarAntreanAir');
-    const badgeList = document.getElementById('jmlAntreanAirListBadge');
-    const listHtml = document.getElementById('listAntreanAirHtml');
-
-    badge.innerText = `${antrean.length} Data Menunggu`;
-    badge.className = antrean.length > 0 ? 'badge bg-warning text-dark' : 'badge bg-secondary';
-
-    if (antrean.length === 0) {
-      cardList.classList.add('d-none');
-      listHtml.innerHTML = '';
-    } else {
-      cardList.classList.remove('d-none');
-      badgeList.innerText = antrean.length;
-      listHtml.innerHTML = antrean.map(item => `
-        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
-          <div>
-            <div class="fw-bold text-dark">${item.namaPelanggan} <span class="badge bg-info text-dark">${item.rt}</span></div>
-            <div class="text-muted" style="font-size:11px;">${item.qrCode} • ${item.meterSebelumnya} → <b>${item.meterSekarang} m³</b> (${item.pemakaianM3} m³)</div>
-          </div>
-          <span class="badge bg-warning text-dark">Menunggu Sinkron</span>
-        </div>
-      `).join('');
-    }
-  }
-
-  async function sinkronkanAntreanAirKeServer(tampilkanKonfirmasi) {
-    if (sedangSinkronAir) return;
-    const antrean = await ambilSemuaAntreanAirIDB();
-    if (antrean.length === 0) {
-      if (tampilkanKonfirmasi) alert("Seluruh data pencatatan meter air di HP sudah tersinkronisasi ke Google Spreadsheet (0 antrean).");
-      return;
-    }
-
-    if (navigator.onLine === false) {
-      if (tampilkanKonfirmasi) alert("HP saat ini sedang OFFLINE. Data pencatatan & foto meteran tetap tersimpan aman di HP dan akan dikirim saat sinyal tersedia.");
-      return;
-    }
-
-    sedangSinkronAir = true;
-    const btnSync = document.getElementById('btnSinkronAirSekarang');
-    if (btnSync) {
-      btnSync.disabled = true;
-      btnSync.innerText = `⏳ MENYINKRONKAN ${antrean.length} DATA & FOTO...`;
-    }
-
-    try {
-      const response = await fetch(GAS_EXEC_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          action: 'sinkronisasiPencatatanAir',
-          args: [{
-            roleUser: rolePetugasAktif || 'Petugas Air',
-            wilayahTugas: wilayahTugasAktif || '',
-            items: antrean
-          }]
-        })
-      });
-
-      const json = await response.json();
-      if (json.status === 'success' && json.data && Array.isArray(json.data.results)) {
-        let berhasil = 0;
-        for (const r of json.data.results) {
-          // Hapus dari IndexedDB HANYA setelah server mengonfirmasi keberhasilan (SYNCED / ALREADY_SYNCED / DUPLICATE_PERIOD)
-          if (r.success && (r.status === 'SYNCED' || r.status === 'ALREADY_SYNCED' || r.status === 'DUPLICATE_PERIOD')) {
-            await hapusAntreanAirIDB(r.idTransaksi);
-            berhasil++;
-          }
-        }
-        await updateStatusAntreanAir();
-        if (berhasil > 0) {
-          putarNadaNotifikasi('sukses');
-          if (tampilkanKonfirmasi) {
-            ucapkanSuaraNotifikasi(`Alhamdulillah, ${berhasil} data meter air dan foto berhasil masuk ke Spreadsheet dan Google Drive.`);
-          }
-          tampilkanNotifScannerAir(`🎉 ${berhasil} pencatatan meter & foto berhasil masuk ke Spreadsheet & Google Drive!`, 'success');
-          muatUlangDatabaseAir(false);
-        }
-      } else {
-        throw new Error(json.message || "Respons server belum berhasil.");
-      }
-    } catch (err) {
-      if (tampilkanKonfirmasi) {
-        putarNadaNotifikasi('gagal');
-        tampilkanNotifScannerAir(`⚠️ Sinkronisasi tertunda (${err.message}). Data lokal di HP TIDAK dihapus dan aman.`, 'warning');
-      }
-    } finally {
-      sedangSinkronAir = false;
-      if (btnSync) {
-        btnSync.disabled = false;
-        btnSync.innerText = "☁️ SINKRONISASI SEKARANG KE SPREADSHEET & DRIVE";
-      }
-    }
-  }
-
-  async function kirimRekapAirWhatsApp() {
-    const antrean = await ambilSemuaAntreanAirIDB();
-    const periodePilih = document.getElementById('periodeAirInput').value;
-    if (antrean.length === 0) {
-      alert("Belum ada antrean pencatatan meter air di HP. (Jika sudah disinkronkan, data sudah langsung masuk ke Spreadsheet).");
-      return;
-    }
-
-    let pesan = `💧 *REKAP PENCATATAN METER AIR BERSIH RW 15*\n`;
-    pesan += `🗓️ Periode: ${periodePilih}\n`;
-    pesan += `👤 Petugas Lapangan: ${petugasAktif}\n`;
-    pesan += `----------------------------------------\n`;
-
-    let totalM3 = 0;
-    antrean.forEach((item, idx) => {
-      pesan += `${idx + 1}. ${item.namaPelanggan} (${item.rt}) : ${item.meterSebelumnya} → *${item.meterSekarang} m³* (Pakai: *${item.pemakaianM3} m³*)\n`;
-      totalM3 += Number(item.pemakaianM3 || 0);
-    });
-
-    pesan += `----------------------------------------\n`;
-    pesan += `📊 *TOTAL PEMAKAIAN TERCATAT:* ${+totalM3.toFixed(2)} m³\n`;
-    pesan += `_Dikirim via Aplikasi Petugas Lapangan RW 15 Digital_`;
-
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(pesan)}`, '_blank');
-  }
-
-  function resetFormAir() {
-    document.getElementById('airIdPelanggan').value = '';
-    document.getElementById('airIdMeter').value = '';
-    document.getElementById('airQrCode').value = '';
-    document.getElementById('airKodePlgView').value = '';
-    document.getElementById('airNamaPelanggan').value = '';
-    document.getElementById('airRtPelanggan').value = '';
-    document.getElementById('airMeterSebelumnya').value = '0';
-    document.getElementById('airMeterSebelumnyaLbl').innerText = '0';
-    document.getElementById('airMeterSekarang').value = '';
-    document.getElementById('airCatatanPetugas').value = '';
-    document.getElementById('chkResetMeterAir').checked = false;
-    document.getElementById('chkKonfirmasiPetugasAir').checked = false;
-    document.getElementById('boxPreviewFotoAir').classList.add('d-none');
-    document.getElementById('badgeHasilOCR').innerText = 'OCR: -';
-    document.getElementById('lblPemakaianAirM3').innerText = '0 m³';
-    document.getElementById('lblEstimasiTagihanAir').innerText = 'Rp 0';
-    document.getElementById('peringatanPemakaianAir').classList.add('d-none');
-    document.getElementById('btnSimpanAirLokal').disabled = true;
-    document.getElementById('cariManualAirInput').value = '';
-    fotoMeterBase64Aktif = '';
-    angkaOCRAktif = '';
-  }
-
-  function tampilkanNotifScannerAir(pesan, tipe) {
-    const box = document.getElementById('pesanNotifScannerAir');
     box.className = 'alert alert-' + tipe + ' py-2 px-3 small mb-2 fw-bold text-center';
     box.innerText = pesan;
     box.classList.remove('d-none');
   }
 </script>
 
-<!-- REGISTER SERVICE WORKER UNTUK PWA OFFLINE-FIRST -->
+<!-- REGISTER SERVICE WORKER UNTUK PWA -->
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
